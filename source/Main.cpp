@@ -43,7 +43,7 @@ public:
 				targetBlipWorldPos = menuNew->targetBlipWorldPos;
 				break;
 			default:
-				menuNew->ResetMap();
+				menuNew->ResetMap(true);
 				menuNew->clearInput = true;
 				break;
 			}
@@ -57,9 +57,7 @@ public:
 				CRadar::LimitRadarPoint(in);
 				CRadar::TransformRadarPointToScreenSpace(out, in);
 
-				DrawWayPoint(out.x, out.y, Scale(22.0f), CRGBA(0, 0, 0, 255));
-				DrawWayPoint(out.x, out.y, Scale(20.0f), CRGBA(255, 0, 0, 255));
-				DrawWayPoint(out.x, out.y, Scale(19.0f), CRGBA(0, 0, 0, 255));
+				DrawWayPoint(out.x, out.y);
 			}
 		};
 	}

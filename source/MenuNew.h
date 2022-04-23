@@ -26,13 +26,14 @@ public:
 public:
 	void DrawMap();
 	void DrawCrosshair(float x, float y);
+	void DrawZone();
 	void DrawBlips();
 	CVector2D WorldToMap(CVector pos);
 	CVector MapToWorld(CVector2D in);
 	void StreamRadarSections();
 	void MapInput();
 	void DoMapZoomInOut(bool out);
-	void ResetMap();
+	void ResetMap(bool resetCrosshair = false);
 	void DrawRadarSectionMap(int x, int y, CRect const& rect, CRGBA const& col);
 	void SetWaypoint(float x, float y);
 	float GetMenuMapTileSize();
