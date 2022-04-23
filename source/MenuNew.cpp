@@ -82,6 +82,7 @@ void CMenuNew::DrawZone() {
 		CFont::SetWrapx(SCREEN_WIDTH);
 		CFont::SetFontStyle(0);
 		CFont::SetColor(CRGBA(255, 255, 255, 255));
+		CFont::SetScale(Scale(1.2f), Scale(1.8f));
 		CFont::PrintString(Scale(32.0f), SCREEN_HEIGHT - Scale(56.0f), str);
 	}
 }
