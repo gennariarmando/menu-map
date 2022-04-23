@@ -4,6 +4,7 @@
 #define MAP_ZOOM_MAX 7.1f
 #define RADAR_TILE_SIZE (500)
 #define RADAR_NUM_TILES (MAP_SIZE / RADAR_TILE_SIZE)
+//#define ALTERNATE_LEVEL_HEIGHT
 
 #include "plugin.h"
 #include "CMenuManager.h"
@@ -11,7 +12,6 @@
 
 enum {
 	MENUPAGE_MAP = MENUPAGE_NO_MEMORY_CARD,
-	RADAR_SPRITE_WAYPOINT = RADAR_SPRITE_COUNT + 1,
 };
 
 class CMenuNew : public CMenuManager {
@@ -20,6 +20,7 @@ public:
 	CVector2D m_vMapBase;
 	CVector2D m_vCrosshair;
 	int targetBlipIndex;
+	CVector targetBlipWorldPos;
 	bool clearInput;
 
 public:

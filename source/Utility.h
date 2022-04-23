@@ -86,3 +86,14 @@ static void DrawTriangle(float x, float y, float scale, float angle, CRGBA const
 	RotateVertices(posn, x, y, angle);
 	Draw2DPolygon(posn[0].x, posn[0].y, posn[1].x, posn[1].y, posn[2].x, posn[2].y, posn[3].x, posn[3].y, CRGBA(col));
 }
+
+static void DrawWayPoint(float x, float y, float scale, CRGBA const& col) {
+	float line = Scale(2.0f);
+
+	x -= (scale) / 2;
+	y -= (scale) / 2;
+	CSprite2d::DrawRect(CRect(x, y, x + (scale), y + line), col);
+	CSprite2d::DrawRect(CRect(x + (scale) , y, x + (scale) - line, y + (scale)), col);
+	CSprite2d::DrawRect(CRect(x, y + (scale), x + (scale), y + (scale) - line), col);
+	CSprite2d::DrawRect(CRect(x, y, x + line, y + (scale)), col);
+}

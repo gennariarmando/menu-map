@@ -5,6 +5,8 @@
 #include "CStreaming.h"
 #include "CWorld.h"
 #include "Utility.h"
+#include "CTheScripts.h"
+#include "cDMAudio.h"
 
 using namespace plugin;
 
@@ -38,13 +40,14 @@ void CMenuNew::DrawMap() {
 	}
 
 	DrawBlips();
-
 	DrawCrosshair(m_vCrosshair.x, m_vCrosshair.y);
 }
 
 void CMenuNew::DrawCrosshair(float x, float y) {
-	float lineSize = Scale(2.0f);
-	CRGBA lineCol = CRGBA(234, 171, 54, FadeIn(255));
+	float lineSize = Scale(3.0f);
+	CRGBA lineCol = CRGBA(234, 171, 54, FadeIn(155));
+
+	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, reinterpret_cast<void*>(TRUE));
 
 	// Ver
 	CSprite2d::DrawRect(CRect(((x) - lineSize), 0.0f, ((x) + lineSize), SCREEN_HEIGHT), lineCol);
@@ -64,42 +67,69 @@ void CMenuNew::DrawBlips() {
 		CVector2D pos = WorldToMap(trace[i].m_vecPos);
 		CRGBA col = CRadar::GetRadarTraceColour(trace[i].m_nColour, true);
 		unsigned short id = trace[i].m_nRadarSprite;
+		unsigned int handle = trace[i].m_nEntityHandle;
+		CSprite2d* sprite = pRadarSprites[id];
+		CEntity* e = NULL;
 
-		if (id != RADAR_SPRITE_NONE) {
-			switch (id) {
-			default:
-				CSprite2d* sprite = pRadarSprites[id];
-				if (sprite)
+		switch (trace[i].m_nBlipType) {
+		case BLIP_COORD:
+		case BLIP_CONTACTPOINT:
+			if ((!CTheScripts::IsPlayerOnAMission() || trace[i].m_nBlipType == BLIP_COORD) || (id == RADAR_SPRITE_WEAPON || id == RADAR_SPRITE_BOMB || id == RADAR_SPRITE_SPRAY)) {
+				if (id != RADAR_SPRITE_NONE) {
 					DrawSpriteWithRotation(sprite, pos.x, pos.y, Scale(24.0f), Scale(24.0f), 0.0f, CRGBA(255, 255, 255, FadeIn(255)));
-				break;
+				}
+				else {
+					DrawSpriteWithRotation(NULL, pos.x, pos.y, Scale(16.0f), Scale(16.0f), 0.0f, CRGBA(0, 0, 0, FadeIn(255)));
+					DrawSpriteWithRotation(NULL, pos.x, pos.y, Scale(14.0f), Scale(14.0f), 0.0f, CRGBA(col.r, col.g, col.b, FadeIn(255)));
+				}
 			}
-		}
-		else {
-			static int level = 0;
-			static int time = 0;
-			if (time < CTimer::m_snTimeInMillisecondsPauseMode) {
-				level++;
-				time = 800 + CTimer::m_snTimeInMillisecondsPauseMode;
+			break;
+		case BLIP_CAR:
+		case BLIP_CHAR:
+		case BLIP_OBJECT:
+			switch (trace[i].m_nBlipType) {
+			case BLIP_CAR:
+				e = CPools::ms_pVehiclePool->GetAt(handle);
+				break;
+			case BLIP_CHAR:
+				e = CPools::ms_pPedPool->GetAt(handle);
+
+				if (e) {
+					CPed* p = static_cast<CPed*>(e);
+					if (p && p->m_bInVehicle) {
+						CVehicle* v = p->m_pVehicle;
+						if (v)
+							e = p->m_pVehicle;
+					}
+				}
+				break;
+			case BLIP_OBJECT:
+				e = CPools::ms_pObjectPool->GetAt(handle);
+				break;
 			}
 
-			if (level > 2)
-				level = 0;
+			if (e) {
+				pos = WorldToMap(e->GetPosition());
 
-			switch (level) {
-			case 1:
-				DrawTriangle(pos.x, pos.y, Scale(16.0f), DegToRad(0.0f), CRGBA(0, 0, 0, FadeIn(255)));
-				DrawTriangle(pos.x, pos.y, Scale(14.0f), DegToRad(0.0f), CRGBA(col.r, col.g, col.b, FadeIn(255)));
-;				break;
-			case 2:
-				DrawTriangle(pos.x, pos.y, Scale(16.0f), DegToRad(180.0f), CRGBA(0, 0, 0, FadeIn(255)));
-				DrawTriangle(pos.x, pos.y, Scale(14.0f), DegToRad(180.0f), CRGBA(col.r, col.g, col.b, FadeIn(255)));
-				break;
-			default:
-				DrawSpriteWithRotation(NULL, pos.x, pos.y, Scale(16.0f), Scale(16.0f), 0.0f, CRGBA(0, 0, 0, FadeIn(255)));
-				DrawSpriteWithRotation(NULL, pos.x, pos.y, Scale(14.0f), Scale(14.0f), 0.0f, CRGBA(col.r, col.g, col.b, FadeIn(255)));
-				break;
+				if (id != RADAR_SPRITE_NONE)
+					DrawSpriteWithRotation(sprite, pos.x, pos.y, Scale(24.0f), Scale(24.0f), 0.0f, CRGBA(255, 255, 255, FadeIn(255)));
+				else {
+					DrawSpriteWithRotation(NULL, pos.x, pos.y, Scale(16.0f), Scale(16.0f), 0.0f, CRGBA(0, 0, 0, FadeIn(255)));
+					DrawSpriteWithRotation(NULL, pos.x, pos.y, Scale(14.0f), Scale(14.0f), 0.0f, CRGBA(col.r, col.g, col.b, FadeIn(255)));
+				}
 			}
+			break;
+		default:
+			break;
 		}
+	}
+
+	// Draw waypoint separately
+	if (targetBlipIndex) {
+		CVector2D pos = WorldToMap(targetBlipWorldPos);
+		DrawWayPoint(pos.x, pos.y, Scale(22.0f), CRGBA(0, 0, 0, 255));
+		DrawWayPoint(pos.x, pos.y, Scale(20.0f), CRGBA(255, 0, 0, 255));
+		DrawWayPoint(pos.x, pos.y, Scale(19.0f), CRGBA(0, 0, 0, 255));
 	}
 
 	if (playa) {
@@ -208,14 +238,14 @@ void CMenuNew::MapInput() {
 		right = clamp(right, -1.0f, 1.0f);
 		up = clamp(up, -1.0f, 1.0f);
 
-		if (isNearlyEqualF(m_vCrosshair.x, SCREEN_WIDTH / 2, 64.0f)) {
+		if (isNearlyEqualF(m_vCrosshair.x, SCREEN_WIDTH / 2, 32.0f)) {
 			if ((right < 0.0f && leftBound || right > 0.0f && rightBound)) {
 				m_vCrosshair.x = SCREEN_WIDTH / 2;
 				m_vMapBase.x -= right * mult;
 			}
 		}
 
-		if (isNearlyEqualF(m_vCrosshair.y, SCREEN_HEIGHT / 2, 64.0f)) {
+		if (isNearlyEqualF(m_vCrosshair.y, SCREEN_HEIGHT / 2, 32.0f)) {
 			if ((up < 0.0f && topBound || up > 0.0f && bottomBound)) {
 				m_vCrosshair.y = SCREEN_HEIGHT / 2;
 				m_vMapBase.y -= up * mult;
@@ -295,16 +325,15 @@ void CMenuNew::DrawRadarSectionMap(int x, int y, CRect const& rect, CRGBA const&
 
 void CMenuNew::SetWaypoint(float x, float y) {
 	if (targetBlipIndex) {
-		CRadar::ClearBlip(targetBlipIndex);
 		targetBlipIndex = 0;
 	}
 	else {
-
 		CVector pos = MapToWorld(CVector2D(x, y));
-		int i = CRadar::SetCoordBlip(BLIP_COORD, pos, BLIP_COLOUR_RED, BLIP_DISPLAY_BOTH);
-		CRadar::SetBlipSprite(i, RADAR_SPRITE_NONE);
-		targetBlipIndex = i;
+		targetBlipWorldPos = pos;
+		targetBlipIndex = 1;
 	}
+
+	DMAudio.PlayFrontEndSound(152, 0);
 }
 
 float CMenuNew::GetMenuMapTileSize() {
@@ -316,3 +345,4 @@ float CMenuNew::GetMenuMapWholeSize() {
 	const float mapWholeSize = GetMenuMapTileSize() * RADAR_NUM_TILES;
 	return mapWholeSize * m_fMapZoom;
 }
+

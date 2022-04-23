@@ -2,8 +2,12 @@
 #include "CMenuManager.h"
 
 #include "MenuNew.h"
+#include "Utility.h"
 
 using namespace plugin;
+
+int targetBlipIndex = 0;
+CVector targetBlipWorldPos;
 
 class MenuMap {
 public:
@@ -29,17 +33,33 @@ public:
 
 		ThiscallEvent <AddressList<0x47AB12, H_CALL>, PRIORITY_AFTER, ArgPickN<CMenuManager*, 0>, void(CMenuManager*)> onDrawingMenuManager;
 		onDrawingMenuManager += [](CMenuManager* menuManager) {
-			CMenuNew* newMenu = static_cast<CMenuNew*>(menuManager);
+			CMenuNew* menuNew = static_cast<CMenuNew*>(menuManager);
 
-			switch (newMenu->m_nCurrentMenuScreen) {
+			switch (menuNew->m_nCurrentMenuScreen) {
 			case MENUPAGE_MAP:
-				newMenu->MapInput();
-				newMenu->DrawMap();
+				menuNew->MapInput();
+				menuNew->DrawMap();
+				targetBlipIndex = menuNew->targetBlipIndex;
+				targetBlipWorldPos = menuNew->targetBlipWorldPos;
 				break;
 			default:
-				newMenu->ResetMap();
-				newMenu->clearInput = true;
+				menuNew->ResetMap();
+				menuNew->clearInput = true;
 				break;
+			}
+		};
+
+		plugin::Events::drawBlipsEvent += [] {
+			if (targetBlipIndex) {
+				CVector2D in = CVector2D(0.0f, 0.0f);
+				CVector2D out = CVector2D(0.0f, 0.0f);			
+				CRadar::TransformRealWorldPointToRadarSpace(in, CVector2D(targetBlipWorldPos.x, targetBlipWorldPos.y));
+				CRadar::LimitRadarPoint(in);
+				CRadar::TransformRadarPointToScreenSpace(out, in);
+
+				DrawWayPoint(out.x, out.y, Scale(22.0f), CRGBA(0, 0, 0, 255));
+				DrawWayPoint(out.x, out.y, Scale(20.0f), CRGBA(255, 0, 0, 255));
+				DrawWayPoint(out.x, out.y, Scale(19.0f), CRGBA(0, 0, 0, 255));
 			}
 		};
 	}
