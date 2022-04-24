@@ -4,7 +4,7 @@
 #define MAP_ZOOM_MAX 7.1f
 #define RADAR_TILE_SIZE (500)
 #define RADAR_NUM_TILES (MAP_SIZE / RADAR_TILE_SIZE)
-//#define ALTERNATE_LEVEL_HEIGHT
+#define RADAR_BLIPS_SCALE 14.0f
 
 #include "plugin.h"
 #include "CMenuManager.h"

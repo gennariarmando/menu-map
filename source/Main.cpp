@@ -57,7 +57,7 @@ public:
 				CRadar::LimitRadarPoint(in);
 				CRadar::TransformRadarPointToScreenSpace(out, in);
 
-				DrawWayPoint(out.x, out.y);
+				DrawWayPoint(out.x, out.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE));
 			}
 		};
 	}

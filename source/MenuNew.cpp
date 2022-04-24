@@ -50,7 +50,7 @@ void CMenuNew::DrawMap() {
 }
 
 void CMenuNew::DrawCrosshair(float x, float y) {
-	float lineSize = Scale(3.0f);
+	float lineSize = ScaleY(2.0f);
 	CRGBA lineCol = CRGBA(234, 171, 54, FadeIn(155));
 
 	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, reinterpret_cast<void*>(TRUE));
@@ -63,14 +63,19 @@ void CMenuNew::DrawCrosshair(float x, float y) {
 }
 
 void CMenuNew::DrawZone() {
-	CSprite2d::DrawRect(CRect(-5.0f, SCREEN_HEIGHT + 5.0f, SCREEN_WIDTH + 5.0f, SCREEN_HEIGHT - Scale(70.0f)), CRGBA(10, 10, 10, 255));
+	CSprite2d::DrawRect(CRect(-5.0f, SCREEN_HEIGHT + 5.0f, SCREEN_WIDTH + 5.0f, SCREEN_HEIGHT - ScaleY(42.0f)), CRGBA(10, 10, 10, 255));
 
 	CVector pos = MapToWorld(CVector2D(m_vCrosshair.x, m_vCrosshair.y));
-	CZone* zone = CTheZones::FindSmallestZonePosition(pos);
+	CZone* zoneType0 = CTheZones::FindSmallestZonePositionType(pos, 0);
+	CZone* zoneType1 = CTheZones::FindSmallestZonePositionType(pos, 1);
+
 	const wchar_t* str = TheText.Get("CITYZON");
 
-	if (zone)
-		str = zone->GetTranslatedName();
+	if (zoneType0)
+		str = zoneType0->GetTranslatedName();
+
+	if (zoneType1)
+		str = zoneType1->GetTranslatedName();
 
 	if (str) {
 		CFont::SetPropOn();
@@ -82,8 +87,8 @@ void CMenuNew::DrawZone() {
 		CFont::SetWrapx(SCREEN_WIDTH);
 		CFont::SetFontStyle(0);
 		CFont::SetColor(CRGBA(255, 255, 255, 255));
-		CFont::SetScale(Scale(1.2f), Scale(1.8f));
-		CFont::PrintString(Scale(32.0f), SCREEN_HEIGHT - Scale(56.0f), str);
+		CFont::SetScale(ScaleX(0.54f), ScaleY(1.12f));
+		CFont::PrintString(ScaleX(16.0f), SCREEN_HEIGHT - ScaleY(34.0f), str);
 	}
 }
 
@@ -97,7 +102,7 @@ void CMenuNew::DrawBlips() {
 		CVector2D pos = WorldToMap(trace[i].m_vecPos);
 		CRGBA col = CRadar::GetRadarTraceColour(trace[i].m_nColour, true);
 		unsigned short id = trace[i].m_nRadarSprite;
-		unsigned int handle = trace[i].m_nEntityHandle;
+		int handle = trace[i].m_nEntityHandle >> 8;
 		CSprite2d* sprite = pRadarSprites[id];
 		CEntity* e = NULL;
 
@@ -107,14 +112,12 @@ void CMenuNew::DrawBlips() {
 		switch (trace[i].m_nBlipType) {
 		case BLIP_COORD:
 		case BLIP_CONTACTPOINT:
-		case BLIP_PICKUP:
-			if (!CTheScripts::IsPlayerOnAMission() || trace[i].m_nBlipType == BLIP_COORD || trace[i].m_nBlipType == BLIP_PICKUP) {
+			if (!CTheScripts::IsPlayerOnAMission() || trace[i].m_nBlipType != BLIP_CONTACTPOINT) {
 				if (id > RADAR_SPRITE_NONE && id < RADAR_SPRITE_COUNT) {
-					DrawSpriteWithRotation(sprite, pos.x, pos.y, Scale(24.0f), Scale(24.0f), 0.0f, CRGBA(255, 255, 255, FadeIn(255)));
+					DrawSpriteWithRotation(sprite, pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), 0.0f, CRGBA(255, 255, 255, FadeIn(255)));
 				}
 				else {
-					DrawSpriteWithRotation(NULL, pos.x, pos.y, Scale(16.0f), Scale(16.0f), 0.0f, CRGBA(0, 0, 0, FadeIn(255)));
-					DrawSpriteWithRotation(NULL, pos.x, pos.y, Scale(14.0f), Scale(14.0f), 0.0f, CRGBA(col.r, col.g, col.b, FadeIn(255)));
+					DrawLevel(pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE * 0.45f), ScaleY(RADAR_BLIPS_SCALE * 0.45f), 0, CRGBA(col.r, col.g, col.b, FadeIn(255)));
 				}
 			}
 			break;
@@ -146,11 +149,10 @@ void CMenuNew::DrawBlips() {
 				pos = WorldToMap(e->GetPosition());
 
 				if (id > RADAR_SPRITE_NONE && id < RADAR_SPRITE_COUNT) {
-					DrawSpriteWithRotation(sprite, pos.x, pos.y, Scale(24.0f), Scale(24.0f), 0.0f, CRGBA(255, 255, 255, FadeIn(255)));
+					DrawSpriteWithRotation(sprite, pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), 0.0f, CRGBA(255, 255, 255, FadeIn(255)));
 				}
 				else {
-					DrawSpriteWithRotation(NULL, pos.x, pos.y, Scale(16.0f), Scale(16.0f), 0.0f, CRGBA(0, 0, 0, FadeIn(255)));
-					DrawSpriteWithRotation(NULL, pos.x, pos.y, Scale(14.0f), Scale(14.0f), 0.0f, CRGBA(col.r, col.g, col.b, FadeIn(255)));
+					DrawLevel(pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE * 0.45f), ScaleY(RADAR_BLIPS_SCALE * 0.45f), 0, CRGBA(col.r, col.g, col.b, FadeIn(255)));
 				}
 			}
 			break;
@@ -162,7 +164,7 @@ void CMenuNew::DrawBlips() {
 	// Draw waypoint separately
 	if (targetBlipIndex) {
 		CVector2D pos = WorldToMap(targetBlipWorldPos);
-		DrawWayPoint(pos.x, pos.y);
+		DrawWayPoint(pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE));
 	}
 
 	CPed* playa = FindPlayerPed();
@@ -173,7 +175,7 @@ void CMenuNew::DrawBlips() {
 		CSprite2d* sprite = pRadarSprites[RADAR_SPRITE_CENTRE];
 
 		if (sprite && flashItem(1000, 200))
-			DrawSpriteWithRotation(sprite, pos.x, pos.y, Scale(24.0f), Scale(24.0f), angle, CRGBA(255, 255, 255, FadeIn(255)));
+			DrawSpriteWithRotation(sprite, pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), angle, CRGBA(255, 255, 255, FadeIn(255)));
 	}
 }
 
@@ -375,7 +377,7 @@ void CMenuNew::SetWaypoint(float x, float y) {
 }
 
 float CMenuNew::GetMenuMapTileSize() {
-	const float tileSize = Scale(48.0f);
+	const float tileSize = ScaleY(24.0f);
 	return tileSize;
 }
 

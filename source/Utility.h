@@ -3,6 +3,9 @@
 #include "extensions/Screen.h"
 #include "CSprite2d.h"
 
+#define defaultScreenWidth 640.0f
+#define defaultScreenHeight 448.0f
+#define defaultAspectRatio defaultScreenWidth / defaultScreenHeight
 #define flashItem(on, off) (CTimer::m_snTimeInMillisecondsPauseMode % on + off < on)
 #define clamp(v, low, high) ((v)<(low) ? (low) : (v)>(high) ? (high) : (v))
 #define isNearlyEqualF(a, b, t) (fabs(a - b) <= t)
@@ -20,8 +23,12 @@ static float GetAspectRatio() {
 	return fScreenAspectRatio;
 }
 
-static float Scale(float a) {
-	return static_cast<int>(a * GetAspectRatio());
+static float ScaleX(float a) {
+	return static_cast<float>(a * SCREEN_WIDTH / defaultScreenWidth) * defaultAspectRatio / GetAspectRatio();
+}
+
+static float ScaleY(float a) {
+	return static_cast<float>(a * SCREEN_HEIGHT / defaultScreenHeight);
 }
 
 static void Draw2DPolygon(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4, const CRGBA& color) {
@@ -35,16 +42,6 @@ static void Draw2DPolygon(float x1, float y1, float x2, float y2, float x3, floa
 	RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)TRUE);
 	RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)TRUE);
 	RwRenderStateSet(rwRENDERSTATESHADEMODE, (void*)rwSHADEMODEGOURAUD);
-}
-
-static CVector2D RotateUV(CVector2D& uv, float rotation, CVector2D center) {
-	CVector2D v = {
-		cos(rotation) * (uv.x - center.x) + sin(rotation) * (uv.y - center.y) + center.x,
-		cos(rotation) * (uv.y - center.y) - sin(rotation) * (uv.x - center.x) + center.y
-	};
-
-	uv = v;
-	return v;
 }
 
 static void RotateVertices(CVector2D* rect, float x, float y, float angle) {
@@ -64,7 +61,7 @@ static void DrawSpriteWithRotation(CSprite2d* sprite, float x, float y, float w,
 	CVector2D posn[4];
 	posn[1].x = x - (w * 0.5f); posn[1].y = y - (h * 0.5f); posn[0].x = x + (w * 0.5f); posn[0].y = y - (h * 0.5f);
 	posn[3].x = x - (w * 0.5f); posn[3].y = y + (h * 0.5f);	posn[2].x = x + (w * 0.5f); posn[2].y = y + (h * 0.5f);
-	
+
 	RotateVertices(posn, x, y, angle);
 
 	if (sprite)
@@ -87,19 +84,27 @@ static void DrawTriangle(float x, float y, float scale, float angle, CRGBA const
 	Draw2DPolygon(posn[0].x, posn[0].y, posn[1].x, posn[1].y, posn[2].x, posn[2].y, posn[3].x, posn[3].y, CRGBA(col));
 }
 
-static void DrawUnfilledRect(float x, float y, float scale, CRGBA const& col) {
-	float line = Scale(2.0f);
+static void DrawUnfilledRect(float x, float y, float thinkness, float w, float h, CRGBA const& col) {
+	float line = thinkness;
 
-	x -= (scale) / 2;
-	y -= (scale) / 2;
-	CSprite2d::DrawRect(CRect(x, y, x + (scale), y + line), col);
-	CSprite2d::DrawRect(CRect(x + (scale), y, x + (scale)-line, y + (scale)), col);
-	CSprite2d::DrawRect(CRect(x, y + (scale), x + (scale), y + (scale)-line), col);
-	CSprite2d::DrawRect(CRect(x, y, x + line, y + (scale)), col);
+	x -= (w) / 2;
+	y -= (h) / 2;
+	CSprite2d::DrawRect(CRect(x, y, x + (w), y + line), col);
+	CSprite2d::DrawRect(CRect(x + (w), y, x + (w)-line, y + (h)), col);
+	CSprite2d::DrawRect(CRect(x, y + (h), x + (w), y + (h)-line), col);
+	CSprite2d::DrawRect(CRect(x, y, x + line, y + (h)), col);
 }
 
-static void DrawWayPoint(float x, float y) {
-	DrawUnfilledRect(x, y, Scale(20.0f), CRGBA(0, 0, 0, 255));
-	DrawUnfilledRect(x, y, Scale(18.0f), CRGBA(255, 0, 0, 255));
-	DrawUnfilledRect(x, y, Scale(17.0f), CRGBA(0, 0, 0, 255));
+static void DrawWayPoint(float x, float y, float w, float h) {
+	DrawUnfilledRect(x, y, ScaleY(3.0f), w, h, CRGBA(0, 0, 0, 255));
+	DrawUnfilledRect(x, y, ScaleY(1.0f), w * 0.85f, h * 0.85f, CRGBA(255, 0, 0, 255));
+}
+
+static void DrawLevel(float x, float y, float w, float h, int type, CRGBA const& col) {
+	switch (type) {
+	default:
+		CSprite2d::DrawRect(CRect(x - (w * 0.65f), y - (h * 0.65f), x + (w * 0.65f), y + (h * 0.65f)), CRGBA(0, 0, 0, 255));
+		CSprite2d::DrawRect(CRect(x - (w * 0.5f), y - (h * 0.5f), x + (w * 0.5f), y + (h * 0.5f)), col);
+		break;
+	}
 }
