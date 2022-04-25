@@ -233,7 +233,7 @@ CVector CMenuNew::MapToWorld(CVector2D in) {
     float w = (MAP_SIZE / 2) / MAP_SIZE;
     out.x = (in.x - w) * MAP_SIZE;
     out.y = (w + in.y) * MAP_SIZE;
-    out.z = CWorld::FindGroundZForCoord(out.x, out.y);
+    out.z = 0.0f;
     return out;
 }
 
