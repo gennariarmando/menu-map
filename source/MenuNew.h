@@ -11,31 +11,36 @@
 #include "CRadar.h"
 
 enum {
-	MENUPAGE_MAP = MENUPAGE_NO_MEMORY_CARD,
+    MENUPAGE_MAP = MENUPAGE_NO_MEMORY_CARD,
 };
 
-class CMenuNew : public CMenuManager {
+class CMenuNew {
 public:
-	float m_fMapZoom;
-	CVector2D m_vMapBase;
-	CVector2D m_vCrosshair;
-	int targetBlipIndex;
-	CVector targetBlipWorldPos;
-	bool clearInput;
+    CMenuManager* menuManager;
+    float m_fMapZoom;
+    CVector2D m_vMapBase;
+    CVector2D m_vCrosshair;
+    int targetBlipIndex;
+    CVector targetBlipWorldPos;
+    bool clearInput;
 
 public:
-	void DrawMap();
-	void DrawCrosshair(float x, float y);
-	void DrawZone();
-	void DrawBlips();
-	CVector2D WorldToMap(CVector pos);
-	CVector MapToWorld(CVector2D in);
-	void StreamRadarSections();
-	void MapInput();
-	void DoMapZoomInOut(bool out);
-	void ResetMap(bool resetCrosshair = false);
-	void DrawRadarSectionMap(int x, int y, CRect const& rect, CRGBA const& col);
-	void SetWaypoint(float x, float y);
-	float GetMenuMapTileSize();
-	float GetMenuMapWholeSize();
+    CMenuNew();
+    ~CMenuNew();
+    void DrawMap();
+    void DrawCrosshair(float x, float y);
+    void DrawZone();
+    void DrawBlips();
+    CVector2D WorldToMap(CVector pos);
+    CVector MapToWorld(CVector2D in);
+    void StreamRadarSections();
+    void MapInput();
+    void DoMapZoomInOut(bool out);
+    void ResetMap(bool resetCrosshair = false);
+    void DrawRadarSectionMap(int x, int y, CRect const& rect, CRGBA const& col);
+    void SetWaypoint(float x, float y);
+    float GetMenuMapTileSize();
+    float GetMenuMapWholeSize();
 };
+
+extern std::shared_ptr<CMenuNew> MenuNew;
