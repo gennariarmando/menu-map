@@ -118,7 +118,7 @@ void CMenuNew::DrawBlips() {
         CVector2D pos = WorldToMap(trace.m_vecPos);
         CRGBA col = CRadar::GetRadarTraceColour(trace.m_nColour, true);
         unsigned short id = trace.m_nRadarSprite;
-        int handle = trace.m_nEntityHandle >> 8;
+        int handle = trace.m_nEntityHandle;
         CSprite2d* sprite = pRadarSprites[id];
         CEntity* e = NULL;
 
@@ -128,7 +128,7 @@ void CMenuNew::DrawBlips() {
         switch (trace.m_nBlipType) {
         case BLIP_COORD:
         case BLIP_CONTACTPOINT:
-            if (!CTheScripts::IsPlayerOnAMission() || trace.m_nBlipType != BLIP_CONTACTPOINT) {
+            if (!CTheScripts::IsPlayerOnAMission() || trace.m_nBlipType == BLIP_COORD) {
                 if (id > RADAR_SPRITE_NONE && id < RADAR_SPRITE_COUNT) {
                     DrawSpriteWithRotation(sprite, pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), 0.0f, CRGBA(255, 255, 255, menuManager->FadeIn(255)));
                 }
@@ -145,10 +145,10 @@ void CMenuNew::DrawBlips() {
 
             switch (trace.m_nBlipType) {
             case BLIP_CAR:
-                e = CPools::ms_pVehiclePool->GetAt(handle);
+                e = CPools::GetVehicle(handle);
                 break;
             case BLIP_CHAR:
-                e = CPools::ms_pPedPool->GetAt(handle);
+                e = CPools::GetPed(handle);
 
                 if (e) {
                     CPed* p = static_cast<CPed*>(e);
@@ -160,7 +160,7 @@ void CMenuNew::DrawBlips() {
                 }
                 break;
             case BLIP_OBJECT:
-                e = CPools::ms_pObjectPool->GetAt(handle);
+                e = CPools::GetObject(handle);
                 break;
             }
 
