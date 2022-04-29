@@ -17,13 +17,14 @@ using namespace plugin;
 std::shared_ptr<CMenuNew> MenuNew;
 
 CMenuNew::CMenuNew() {
-    menuManager = NULL;
+    menuManager = &FrontEndMenuManager;
     m_fMapZoom = MAP_ZOOM_MIN;
     m_vMapBase = {};
     m_vCrosshair = {};
     targetBlipIndex = 0;
     targetBlipWorldPos = {};
     clearInput = false;
+    settings.Read();
 }
 
 CMenuNew::~CMenuNew() {
@@ -31,6 +32,9 @@ CMenuNew::~CMenuNew() {
 }
 
 void CMenuNew::DrawMap() {
+    if (!menuManager)
+        return;
+
     RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, reinterpret_cast<void*>(FALSE));
     RwRenderStateSet(rwRENDERSTATESRCBLEND, reinterpret_cast<void*>(rwBLENDSRCALPHA));
     RwRenderStateSet(rwRENDERSTATEDESTBLEND, reinterpret_cast<void*>(rwBLENDINVSRCALPHA));
@@ -39,10 +43,11 @@ void CMenuNew::DrawMap() {
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE, reinterpret_cast<void*>(FALSE));
 
     CSprite2d::DrawRect(CRect(-5.0f, -5.0f, SCREEN_WIDTH + 5.0f, SCREEN_HEIGHT + 5.0f), CRGBA(0, 0, 0, 255));
+    CSprite2d::DrawRect(CRect(-5.0f, -5.0f, SCREEN_WIDTH + 5.0f, SCREEN_HEIGHT + 5.0f), CRGBA(settings.backgroundColor.r, settings.backgroundColor.g, settings.backgroundColor.b, settings.backgroundColor.a));
 
     const float mapHalfSize = GetMenuMapWholeSize() / 2;
     CRect rect;
-    CRGBA col = { 255, 255, 255, static_cast<unsigned char>(menuManager->FadeIn(255)) };
+    CRGBA col = { settings.radarMapColor.r, settings.radarMapColor.g, settings.radarMapColor.b, static_cast<unsigned char>(menuManager->FadeIn(settings.radarMapColor.a)) };
 
     float mapZoom = GetMenuMapTileSize() * m_fMapZoom;
     rect.left = m_vMapBase.x;
@@ -74,7 +79,7 @@ void CMenuNew::DrawMap() {
 
 void CMenuNew::DrawCrosshair(float x, float y) {
     float lineSize = ScaleY(2.0f);
-    CRGBA lineCol = CRGBA(234, 171, 54, menuManager->FadeIn(155));
+    CRGBA lineCol = CRGBA(settings.crosshairColor.r, settings.crosshairColor.g, settings.crosshairColor.b, menuManager->FadeIn(settings.crosshairColor.a));
 
     RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, reinterpret_cast<void*>(TRUE));
 
@@ -88,7 +93,7 @@ void CMenuNew::DrawCrosshair(float x, float y) {
 void CMenuNew::DrawZone() {
     RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, reinterpret_cast<void*>(FALSE));
 
-    CSprite2d::DrawRect(CRect(-5.0f, SCREEN_HEIGHT + 5.0f, SCREEN_WIDTH + 5.0f, SCREEN_HEIGHT - ScaleY(42.0f)), CRGBA(10, 10, 10, 255));
+    CSprite2d::DrawRect(CRect(-5.0f, SCREEN_HEIGHT + 5.0f, SCREEN_WIDTH + 5.0f, SCREEN_HEIGHT - ScaleY(42.0f)), CRGBA(10, 10, 10, menuManager->FadeIn(255)));
 
     CVector pos = MapToWorld(CVector2D(m_vCrosshair.x, m_vCrosshair.y));
     CZone* zoneType0 = CTheZones::FindSmallestZonePositionType(pos, 0);
@@ -111,7 +116,7 @@ void CMenuNew::DrawZone() {
         CFont::SetDropShadowPosition(0);
         CFont::SetWrapx(SCREEN_WIDTH);
         CFont::SetFontStyle(0);
-        CFont::SetColor(CRGBA(255, 255, 255, 255));
+        CFont::SetColor(CRGBA(settings.zoneNameColor.r, settings.zoneNameColor.g, settings.zoneNameColor.b, menuManager->FadeIn(settings.zoneNameColor.a)));
         CFont::SetScale(ScaleX(0.54f), ScaleY(1.12f));
         CFont::PrintString(ScaleX(16.0f), SCREEN_HEIGHT - ScaleY(34.0f), str);
     }
@@ -201,7 +206,7 @@ void CMenuNew::DrawBlips() {
         CSprite2d* sprite = pRadarSprites[RADAR_SPRITE_CENTRE];
 
         if (sprite && flashItem(1000, 200))
-            DrawSpriteWithRotation(sprite, pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), angle, CRGBA(255, 255, 255, menuManager->FadeIn(255)));
+            DrawSpriteWithRotation(sprite, pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE - 1.0f), ScaleY(RADAR_BLIPS_SCALE - 1.0f), angle, CRGBA(255, 255, 255, menuManager->FadeIn(255)));
     }
 }
 
@@ -253,6 +258,9 @@ void CMenuNew::StreamRadarSections() {
 }
 
 void CMenuNew::MapInput() {
+    if (!menuManager)
+        return;
+
     CPad* pad = CPad::GetPad(0);
 
     if (clearInput) {
@@ -378,6 +386,7 @@ void CMenuNew::DrawRadarSectionMap(int x, int y, CRect const& rect, CRGBA const&
         if (texture) {
             RwRenderStateSet(rwRENDERSTATETEXTURERASTER, RwTextureGetRaster(texture));
             CSprite2d::SetVertices(rect, col, col, col, col, 0);
+
             RwIm2DRenderPrimitive(rwPRIMTYPETRIFAN, CSprite2d::maVertices, 4);
         }
     }

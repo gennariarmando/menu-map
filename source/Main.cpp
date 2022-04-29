@@ -9,6 +9,7 @@ using namespace plugin;
 class MenuMap {
 public:
     MenuMap() {
+#ifdef GTA3
         const CMenuScreen pauseMenuPage = {
             "FET_PAU", 1, -1, -1, 0, 0,
             MENUACTION_RESUME, "FEM_RES", 0, MENUPAGE_NONE,
@@ -21,24 +22,21 @@ public:
         };
 
         plugin::patch::Set(0x611930 + sizeof(CMenuScreen) * MENUPAGE_PAUSE_MENU, pauseMenuPage);
-
         const CMenuScreen mapMenuPage = {
             "", 1, MENUPAGE_PAUSE_MENU, MENUPAGE_PAUSE_MENU, 2, 2,
         };
 
         plugin::patch::Set(0x611930 + sizeof(CMenuScreen) * MENUPAGE_MAP, mapMenuPage);
+#endif
 
         plugin::Events::initRwEvent += [] {
-            CMenuManager* m = &FrontEndMenuManager;
-            if (m) {
-                MenuNew = std::make_shared<CMenuNew>();
-                MenuNew->menuManager = m;
-            }
+            MenuNew = std::make_shared<CMenuNew>();
         };
 
+#ifdef GTA3
         ThiscallEvent <AddressList<0x47AB12, H_CALL>, PRIORITY_AFTER, ArgPickN<CMenuManager*, 0>, void(CMenuManager*)> onDrawingMenuManager;
         onDrawingMenuManager += [](CMenuManager* menuManager) {
-            if (!MenuNew)
+            if (!MenuNew || !MenuNew->menuManager)
                 return;
 
             switch (MenuNew->menuManager->m_nCurrentMenuScreen) {
@@ -52,9 +50,11 @@ public:
                 break;
             }
         };
+#else
+#endif
 
         plugin::Events::drawBlipsEvent += [] {
-            if (!MenuNew)
+            if (!MenuNew || !MenuNew->menuManager)
                 return;
 
             if (MenuNew->targetBlipIndex) {

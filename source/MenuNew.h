@@ -9,9 +9,12 @@
 #include "plugin.h"
 #include "CMenuManager.h"
 #include "CRadar.h"
+#include "Settings.h"
 
 enum {
+#ifdef GTA3
     MENUPAGE_MAP = MENUPAGE_NO_MEMORY_CARD,
+#endif
 };
 
 class CMenuNew {
@@ -23,6 +26,7 @@ public:
     int targetBlipIndex;
     CVector targetBlipWorldPos;
     bool clearInput;
+    Settings settings;
 
 public:
     CMenuNew();
