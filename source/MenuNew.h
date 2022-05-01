@@ -45,6 +45,7 @@ public:
     void SetWaypoint(float x, float y);
     float GetMenuMapTileSize();
     float GetMenuMapWholeSize();
+    void DrawLegend();
 };
 
 extern std::shared_ptr<CMenuNew> MenuNew;
