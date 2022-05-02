@@ -299,13 +299,14 @@ void CMenuNew::StreamRadarSections() {
             int index = i + RADAR_NUM_TILES * j;
             int r = gRadarTxdIds[index];
 #ifdef GTA3
-            CStreaming::RequestModel(r + 5500, GAME_REQUIRED);
+            CStreaming::RequestModel(r + 5500, KEEP_IN_MEMORY | GAME_REQUIRED);
 #else
-            CStreaming::RequestModel(r + 6500, GAME_REQUIRED);
+            CStreaming::RequestModel(r + 6500, KEEP_IN_MEMORY | GAME_REQUIRED);
 #endif
         };
     }
-    CStreaming::LoadAllRequestedModels(0);
+
+    CStreaming::LoadAllRequestedModels(true);
 }
 
 void CMenuNew::MapInput() {
@@ -526,7 +527,7 @@ void CMenuNew::DrawLegend() {
 
         if (CRadar::MapLegendList[i + 1] != RADAR_SPRITE_NONE && i < 74) {
             x = SCREEN_WIDTH / 2;
-            x += ScaleX(shift / 4);
+            x += ScaleX(shift / 8);
             CRadar::DrawLegend(x, y, CRadar::MapLegendList[i + 1]);
         }
 
