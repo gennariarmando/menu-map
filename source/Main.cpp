@@ -40,7 +40,7 @@ public:
             if (!MenuNew || !MenuNew->menuManager)
                 return;
 
-            switch (MenuNew->menuManager->m_nCurrentMenuScreen) {
+            switch (MenuNew->menuManager->m_nCurrentMenuPage) {
             case MENUPAGE_MAP:
                 MenuNew->MapInput();
                 MenuNew->DrawMap();
