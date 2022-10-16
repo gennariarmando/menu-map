@@ -6,6 +6,7 @@ public:
     CRGBA backgroundColor;
     CRGBA crosshairColor;
     CRGBA zoneNameColor;
+    bool forceBlipsOnMap;
 
 public:
     void Read();

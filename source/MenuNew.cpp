@@ -6,14 +6,16 @@
 #include "CWorld.h"
 #include "Utility.h"
 #include "CTheScripts.h"
+#ifndef GTASA
 #include "cDMAudio.h"
+#endif
 #include "CTheZones.h"
 #include "CFont.h"
 #include "CText.h"
 
 using namespace plugin;
 
-std::shared_ptr<CMenuNew> MenuNew;
+std::unique_ptr<CMenuNew> MenuNew;
 
 CMenuNew::CMenuNew() {
     menuManager = &FrontEndMenuManager;
@@ -27,7 +29,7 @@ CMenuNew::CMenuNew() {
 }
 
 CMenuNew::~CMenuNew() {
-    menuManager = NULL;
+    menuManager = nullptr;
 }
 
 void CMenuNew::DrawMap() {
@@ -51,7 +53,13 @@ void CMenuNew::DrawMap() {
     CSprite2d::DrawRect(CRect(-5.0f, -5.0f, SCREEN_WIDTH + 5.0f, SCREEN_HEIGHT + 5.0f), CRGBA(0, 0, 0, 255));
     CSprite2d::DrawRect(CRect(-5.0f, -5.0f, SCREEN_WIDTH + 5.0f, SCREEN_HEIGHT + 5.0f), CRGBA(settings.backgroundColor.r, settings.backgroundColor.g, settings.backgroundColor.b, settings.backgroundColor.a));
 
-    CRGBA col = { settings.radarMapColor.r, settings.radarMapColor.g, settings.radarMapColor.b, static_cast<unsigned char>(menuManager->FadeIn(settings.radarMapColor.a)) };
+    CRGBA col = { settings.radarMapColor.r, settings.radarMapColor.g, settings.radarMapColor.b,
+#ifdef GTASA
+        255
+#else
+        static_cast<unsigned char>(menuManager->FadeIn(settings.radarMapColor.a))
+#endif
+    };
     CRect rect;
 
     const float mapHalfSize = GetMenuMapWholeSize() / 2;
@@ -82,12 +90,20 @@ void CMenuNew::DrawMap() {
 #ifdef GTAVC
     DrawLegend();
     menuManager->m_bDrawRadarOrMap = false;
+    menuManager->DisplayHelperText("FEH_MPH");
 #endif
+
 }
 
 void CMenuNew::DrawCrosshair(float x, float y) {
     float lineSize = ScaleY(2.0f);
-    CRGBA lineCol = CRGBA(settings.crosshairColor.r, settings.crosshairColor.g, settings.crosshairColor.b, menuManager->FadeIn(settings.crosshairColor.a));
+    CRGBA lineCol = CRGBA(settings.crosshairColor.r, settings.crosshairColor.g, settings.crosshairColor.b, 
+#ifdef GTASA
+        255
+#else
+        menuManager->FadeIn(settings.crosshairColor.a)
+#endif
+    );
 
     RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, reinterpret_cast<void*>(TRUE));
 
@@ -109,11 +125,17 @@ void CMenuNew::DrawZone() {
 #ifdef GTA3
     CZone* zoneType0 = CTheZones::FindSmallestZonePositionType(pos, 0);
     CZone* zoneType1 = CTheZones::FindSmallestZonePositionType(pos, 1);
-#else
+#elif GTAVC
     CZone* zoneType0 = CTheZones::FindSmallestNavigationZoneForPosition(&pos, true, true);
+#elif GTASA
+    CZone* zoneType0 = CTheZones::FindSmallestZoneForPosition(pos, false);
 #endif
-    const wchar_t* str = TheText.Get("CITYZON");
 
+#ifdef GTASA
+    const char* str = TheText.Get("CITYZON");
+#else
+    const wchar_t* str = TheText.Get("CITYZON");
+#endif
     if (zoneType0)
         str = zoneType0->GetTranslatedName();
 
@@ -122,11 +144,23 @@ void CMenuNew::DrawZone() {
         str = zoneType1->GetTranslatedName();
 #endif
     if (str) {
+#ifndef GTASA
         CFont::SetPropOn();
         CFont::SetBackgroundOff();
         CFont::SetCentreOff();
+#else
+        CFont::SetProportional(true);
+        CFont::SetBackground(false, false);
+        CFont::SetOrientation(ALIGN_LEFT);
+#endif
         CFont::SetWrapx(SCREEN_WIDTH);
-        CFont::SetColor(CRGBA(settings.zoneNameColor.r, settings.zoneNameColor.g, settings.zoneNameColor.b, menuManager->FadeIn(settings.zoneNameColor.a)));
+        CFont::SetColor(CRGBA(settings.zoneNameColor.r, settings.zoneNameColor.g, settings.zoneNameColor.b, 
+#ifdef GTASA
+            255
+#else
+            menuManager->FadeIn(settings.zoneNameColor.a)
+#endif
+        ));
 #ifdef GTA3
         CFont::SetDropColor(CRGBA(0, 0, 0, 0));
         CFont::SetDropShadowPosition(0);
@@ -134,13 +168,13 @@ void CMenuNew::DrawZone() {
         CFont::SetFontStyle(0);
         CFont::SetScale(ScaleX(0.54f), ScaleY(1.12f));
         CFont::PrintString(ScaleX(16.0f), SCREEN_HEIGHT - ScaleY(34.0f), str);
+        CFont::SetRightJustifyOn();
 #else
         CFont::SetDropColor(CRGBA(0, 0, 0, 255));
         CFont::SetDropShadowPosition(2);
-        CFont::SetRightJustifyOn();
         CFont::SetFontStyle(2);
         CFont::SetScale(ScaleX(0.64f), ScaleY(1.28f));
-        CFont::PrintString(SCREEN_WIDTH - ScaleX(72.0f), SCREEN_HEIGHT - ScaleY(102.0f), str);
+        CFont::PrintString(SCREEN_WIDTH - ScaleX(72.0f), SCREEN_HEIGHT - ScaleY(102.0f), (char*)str);
 #endif
     }
 }
@@ -158,10 +192,19 @@ void CMenuNew::DrawBlips() {
 
         CPlayerPed* playa = FindPlayerPed();
         CVector2D pos = WorldToMap(trace.m_vecPos);
-        CRGBA col = CRadar::GetRadarTraceColour(trace.m_nColour, true);
+        CRGBA col = CRadar::GetRadarTraceColour(trace.m_nColour, true
+#ifdef GTASA
+            , trace.m_bFriendly
+#endif
+        );
         unsigned short id = trace.m_nRadarSprite;
         int handle = trace.m_nEntityHandle;
-        CSprite2d* sprite = pRadarSprites[id];
+        CSprite2d* sprite =
+#ifdef GTASA
+            & CRadar::RadarBlipSprites[id];
+#else
+            pRadarSprites[id];
+#endif
         CEntity* e = NULL;
 
         if (trace.m_nBlipDisplay < BLIP_DISPLAY_BLIP_ONLY)
@@ -172,7 +215,13 @@ void CMenuNew::DrawBlips() {
         case BLIP_CONTACTPOINT:
             if (!CTheScripts::IsPlayerOnAMission() || trace.m_nBlipType == BLIP_COORD) {
                 if (id > RADAR_SPRITE_NONE && id < RADAR_SPRITE_COUNT) {
-                    DrawSpriteWithRotation(sprite, pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), 0.0f, CRGBA(255, 255, 255, menuManager->FadeIn(255)));
+                    DrawSpriteWithRotation(sprite, pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), 0.0f, CRGBA(255, 255, 255,
+#ifdef GTASA
+                        255
+#else
+                        menuManager->FadeIn(255)
+#endif
+                        ));
                 }
                 else {
                     int level = 0;
@@ -185,7 +234,13 @@ void CMenuNew::DrawBlips() {
                         else
                             level = 0;
                     }
-                    DrawLevel(pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE * 0.45f), ScaleY(RADAR_BLIPS_SCALE * 0.45f), level, CRGBA(col.r, col.g, col.b, menuManager->FadeIn(255)));
+                    DrawLevel(pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE * 0.45f), ScaleY(RADAR_BLIPS_SCALE * 0.45f), level, CRGBA(col.r, col.g, col.b,
+#ifdef GTASA
+                        255
+#else
+                        menuManager->FadeIn(255)
+#endif                    
+                        ));
                 }
             }
             break;
@@ -204,7 +259,13 @@ void CMenuNew::DrawBlips() {
 
                 if (e) {
                     CPed* p = static_cast<CPed*>(e);
-                    if (p && p->m_bInVehicle) {
+                    if (p &&
+#ifdef GTASA
+                        p->m_nPedFlags.bInVehicle
+#else
+                        p->m_bInVehicle
+#endif
+                        ) {
                         CVehicle* v = p->m_pVehicle;
                         if (v)
                             e = v;
@@ -220,7 +281,13 @@ void CMenuNew::DrawBlips() {
                 pos = WorldToMap(e->GetPosition());
 
                 if (id > RADAR_SPRITE_NONE && id < RADAR_SPRITE_COUNT) {
-                    DrawSpriteWithRotation(sprite, pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), 0.0f, CRGBA(255, 255, 255, menuManager->FadeIn(255)));
+                    DrawSpriteWithRotation(sprite, pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), 0.0f, CRGBA(255, 255, 255,
+#ifdef GTASA
+                        255
+#else
+                        menuManager->FadeIn(255)
+#endif
+                    ));
                 }
                 else {
                     int level = 0;
@@ -233,12 +300,51 @@ void CMenuNew::DrawBlips() {
                         else
                             level = 0;
                     }
-                    DrawLevel(pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE * 0.45f), ScaleY(RADAR_BLIPS_SCALE * 0.45f), level, CRGBA(col.r, col.g, col.b, menuManager->FadeIn(255)));
+                    DrawLevel(pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE * 0.45f), ScaleY(RADAR_BLIPS_SCALE * 0.45f), level, CRGBA(col.r, col.g, col.b,
+#ifdef GTASA
+                        255
+#else
+                        menuManager->FadeIn(255)
+#endif
+                    ));
                 }
             }
             break;
         }
     }
+
+#ifdef GTA3
+    // Force drawing of some blips, III only.
+    if (settings.forceBlipsOnMap) {
+        struct fb {
+            float x;
+            float y;
+            unsigned short sprite;
+        };
+        std::vector<fb> pos = {
+            { 1071.2f, -400.0f, RADAR_SPRITE_WEAPON }, // ammu1
+            { 345.5f, -713.5f, RADAR_SPRITE_WEAPON }, // ammu2
+            { -1200.8f, -24.5f, RADAR_SPRITE_WEAPON }, // ammu3
+            { 925.0f, -359.5f, RADAR_SPRITE_SPRAY }, // spray1
+            { 379.0f, -493.7f, RADAR_SPRITE_SPRAY  }, // spray2
+            { -1142.0f, 34.7f, RADAR_SPRITE_SPRAY }, // spray3
+            { 1282.1f, -104.8f, RADAR_SPRITE_BOMB }, // bomb1
+            { 380.0f, -576.6f, RADAR_SPRITE_BOMB }, // bomb2
+            { -1082.5f, 55.2f, RADAR_SPRITE_BOMB }, // bomb3
+        };
+
+        for (auto& it : pos) {
+            CVector2D pos = WorldToMap({ it.x, it.y, 0.0f });
+            DrawSpriteWithRotation(pRadarSprites[it.sprite], pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), 0.0f, CRGBA(255, 255, 255,
+#ifdef GTASA
+                255
+#else
+                menuManager->FadeIn(255)
+#endif
+            ));
+        }
+    }
+#endif
 
     // Draw waypoint separately
     if (targetBlipIndex) {
@@ -250,13 +356,28 @@ void CMenuNew::DrawBlips() {
     if (playa) {
         // Draw player
         CVector2D pos = WorldToMap(playa->GetPosition());
-        float angle = FindPlayerHeading();
-        CSprite2d* sprite = pRadarSprites[RADAR_SPRITE_CENTRE];
+        float angle = FindPlayerHeading(
+#ifdef GTASA 
+        0
+#endif
+        );
+        CSprite2d* sprite =
+#ifdef GTASA
+            &CRadar::RadarBlipSprites[RADAR_SPRITE_CENTRE];
+#else 
+            pRadarSprites[RADAR_SPRITE_CENTRE];
+#endif
 
         if (sprite && flashItem(1000, 200))
-            DrawSpriteWithRotation(sprite, pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE - 1.0f), ScaleY(RADAR_BLIPS_SCALE - 1.0f), angle, CRGBA(255, 255, 255, menuManager->FadeIn(255)));
+            DrawSpriteWithRotation(sprite, pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE - 1.0f), ScaleY(RADAR_BLIPS_SCALE - 1.0f), angle, CRGBA(255, 255, 255,
+#ifdef GTASA
+                255
+#else
+                menuManager->FadeIn(255)
+#endif
+            ));
     }
-    }
+}
 
 CVector2D CMenuNew::WorldToMap(CVector in) {
     CVector2D out = { 0.0f, 0.0f };
@@ -291,32 +412,49 @@ CVector CMenuNew::MapToWorld(CVector2D in) {
 }
 
 void CMenuNew::StreamRadarSections() {
-    if (CStreaming::ms_disableStreaming)
-        return;
+    //if (CStreaming::ms_disableStreaming)
+    //    return;
 
     for (int i = 0; i < RADAR_NUM_TILES; ++i) {
         for (int j = 0; j < RADAR_NUM_TILES; ++j) {
             int index = i + RADAR_NUM_TILES * j;
+#ifdef GTASA
+            int r = gRadarTextures[index];
+#else
             int r = gRadarTxdIds[index];
+#endif
 #ifdef GTA3
             CStreaming::RequestModel(r + 5500, KEEP_IN_MEMORY | GAME_REQUIRED);
-#else
+#elif GTAVC
             CStreaming::RequestModel(r + 6500, KEEP_IN_MEMORY | GAME_REQUIRED);
+#elif GTASA
+            CStreaming::RequestModel(r + 20000, KEEP_IN_MEMORY | GAME_REQUIRED);
+            CStreaming::LoadRequestedModels();
 #endif
         };
     }
 
+#ifndef GTASA
     CStreaming::LoadAllRequestedModels(true);
+#endif
 }
 
 void CMenuNew::MapInput() {
     if (!menuManager)
         return;
 
+#ifdef GTASA
+    menuManager->m_bMapOverview = true;
+#endif
+
     CPad* pad = CPad::GetPad(0);
 
     if (clearInput) {
-        pad->Clear(true);
+        pad->Clear(true
+#ifdef GTASA
+            , false
+#endif
+        );
         clearInput = false;
     }
 
@@ -340,9 +478,9 @@ void CMenuNew::MapInput() {
     mapZoomOut = clamp(mapZoomOut, -1.0f, 1.0f);
     mapZoomIn = clamp(mapZoomIn, -1.0f, 1.0f);
 
-    rightMousebutton |= (pad->NewKeyState.enter && !pad->OldKeyState.enter) || (pad->NewKeyState.extenter && !pad->OldKeyState.extenter);
-    rightMousebutton |= (pad->NewState.ButtonCross && !pad->OldState.ButtonCross);
-    showLegend |= (pad->NewState.ButtonSquare && !pad->OldState.ButtonSquare);
+    rightMousebutton |= (pad->NewKeyState.standardKeys['T'] && !pad->OldKeyState.standardKeys['T']);
+    rightMousebutton |= (pad->NewState.ButtonSquare && !pad->OldState.ButtonSquare);
+    showLegend |= (pad->NewState.LeftShoulder1 && !pad->OldState.LeftShoulder1);
 
 #ifdef GTAVC
     if (showLegend)
@@ -372,21 +510,41 @@ void CMenuNew::MapInput() {
         right = clamp(right, -1.0f, 1.0f);
         up = clamp(up, -1.0f, 1.0f);
 
-        if (isNearlyEqualF(m_vCrosshair.x, SCREEN_WIDTH / 2, 32.0f)) {
+        bool stopX = false;
+        bool stopY = false;
+        if (isNearlyEqualF(m_vCrosshair.x, SCREEN_WIDTH / 2, 16.0f)) {
             if ((right < 0.0f && leftBound || right > 0.0f && rightBound)) {
                 m_vCrosshair.x = SCREEN_WIDTH / 2;
                 m_vMapBase.x -= right * mult;
             }
         }
+        else {
+            if ((right < 0.0f && leftBound && m_vCrosshair.x < SCREEN_WIDTH / 2) || (right > 0.0f && rightBound && m_vCrosshair.x > SCREEN_WIDTH / 2)) {
+                m_vCrosshair.x -= right * mult;
+                m_vMapBase.x -= right * mult;
+                stopX = true;
+            }
+        }
 
-        if (isNearlyEqualF(m_vCrosshair.y, SCREEN_HEIGHT / 2, 32.0f)) {
+        if (isNearlyEqualF(m_vCrosshair.y, SCREEN_HEIGHT / 2, 16.0f)) {
             if ((up < 0.0f && topBound || up > 0.0f && bottomBound)) {
                 m_vCrosshair.y = SCREEN_HEIGHT / 2;
                 m_vMapBase.y -= up * mult;
             }
         }
-        m_vCrosshair.x += right * mult;
-        m_vCrosshair.y += up * mult;
+        else {
+            if ((up < 0.0f && m_vCrosshair.y < SCREEN_HEIGHT / 2) || (up > 0.0f && m_vCrosshair.y > SCREEN_HEIGHT / 2)) {
+                m_vCrosshair.y -= up * mult;
+                m_vMapBase.y -= up * mult;
+                stopY = true;
+            }
+        }
+
+        if (!stopX)
+            m_vCrosshair.x += right * mult;
+
+        if (!stopY)
+            m_vCrosshair.y += up * mult;
     }
 
     if (mapZoomIn)
@@ -444,7 +602,12 @@ void CMenuNew::ResetMap(bool resetCrosshair) {
 void CMenuNew::DrawRadarSectionMap(int x, int y, CRect const& rect, CRGBA const& col) {
     int index = clamp(x + RADAR_NUM_TILES * y, 0, (RADAR_NUM_TILES * RADAR_NUM_TILES) - 1);
     RwTexture* texture = NULL;
-    RwTexDictionary* txd = CTxdStore::ms_pTxdPool->GetAt(gRadarTxdIds[index])->m_pRwDictionary;
+#ifdef GTASA
+    int r = gRadarTextures[index];
+#else
+    int r = gRadarTxdIds[index];
+#endif
+    RwTexDictionary* txd = CTxdStore::ms_pTxdPool->GetAt(r)->m_pRwDictionary;
 
     if (txd)
         texture = GetFirstTexture(txd);
@@ -482,7 +645,7 @@ void CMenuNew::SetWaypoint(float x, float y) {
 
 #ifdef GTA3
     DMAudio.PlayFrontEndSound(152, 0);
-#else
+#elif GTAVC
     DMAudio.PlayFrontEndSound(196, 0);
 #endif
 }

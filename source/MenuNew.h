@@ -1,5 +1,9 @@
 #pragma once
+#ifdef GTASA
+#define MAP_SIZE (6000.0f)
+#else
 #define MAP_SIZE (4000.0f)
+#endif
 #define MAP_ZOOM_MIN 2.1f
 #define MAP_ZOOM_MAX 7.1f
 #define RADAR_TILE_SIZE (500)
@@ -48,4 +52,4 @@ public:
     void DrawLegend();
 };
 
-extern std::shared_ptr<CMenuNew> MenuNew;
+extern std::unique_ptr<CMenuNew> MenuNew;

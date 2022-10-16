@@ -13,4 +13,5 @@ void Settings::Read() {
     crosshairColor = config["CrosshairColor"].asRGBA(CRGBA(234, 171, 54, 255));
     zoneNameColor = config["ZoneNameColor"].asRGBA(CRGBA(255, 255, 255, 255));
 
+    forceBlipsOnMap = config["ForceBlipsOnMap"].asBool(true);
 }

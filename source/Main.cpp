@@ -40,7 +40,7 @@ public:
             if (!MenuNew || !MenuNew->menuManager)
                 return;
 
-            switch (MenuNew->menuManager->m_nCurrentMenuScreen) {
+            switch (MenuNew->menuManager->m_nCurrentMenuPage) {
             case MENUPAGE_MAP:
                 MenuNew->MapInput();
                 MenuNew->DrawMap();
@@ -52,20 +52,11 @@ public:
             }
         };
 #else
-        const CMenuScreen mapMenuPage = {
-            "FEH_MAP", MENUPAGE_34, 2,
-            {
-
-            }
-        };
-
-        plugin::patch::Set(0x6D8B70 + sizeof(CMenuScreen) * MENUPAGE_MAP, mapMenuPage);
-
         auto drawMap = [](CMenuManager*, int) {
             if (!MenuNew || !MenuNew->menuManager)
                 return;
 
-            switch (MenuNew->menuManager->m_nCurrentMenuScreen) {
+            switch (MenuNew->menuManager->m_nCurrentMenuPage) {
             case MENUPAGE_MAP:
                 MenuNew->MapInput();
                 MenuNew->DrawMap();
@@ -77,6 +68,10 @@ public:
             }
         };
 
+#ifdef GTASA
+        plugin::patch::RedirectCall(0x57BA28, (void(__fastcall*)(CMenuManager*, int))drawMap);
+        plugin::patch::Nop(0x057BA08, 9);
+#elif GTAVC
         plugin::patch::RedirectCall(0x4A2CC2, (void(__fastcall*)(CMenuManager*, int))drawMap);
         plugin::patch::Nop(0x4A2CB7, 9);
 
@@ -86,9 +81,10 @@ public:
         plugin::patch::Set<BYTE>(0x4973C9, 0xEB);
         plugin::patch::Set<BYTE>(0x496600 + 6, -1);
 #endif
+#endif
 
         plugin::Events::initRwEvent += [] {
-            MenuNew = std::make_shared<CMenuNew>();
+            MenuNew = std::make_unique<CMenuNew>();
         };
 
         plugin::Events::drawBlipsEvent += [] {
