@@ -510,41 +510,21 @@ void CMenuNew::MapInput() {
         right = clamp(right, -1.0f, 1.0f);
         up = clamp(up, -1.0f, 1.0f);
 
-        bool stopX = false;
-        bool stopY = false;
-        if (isNearlyEqualF(m_vCrosshair.x, SCREEN_WIDTH / 2, 16.0f)) {
+        if (isNearlyEqualF(m_vCrosshair.x, SCREEN_WIDTH / 2, 32.0f)) {
             if ((right < 0.0f && leftBound || right > 0.0f && rightBound)) {
                 m_vCrosshair.x = SCREEN_WIDTH / 2;
                 m_vMapBase.x -= right * mult;
             }
         }
-        else {
-            if ((right < 0.0f && leftBound && m_vCrosshair.x < SCREEN_WIDTH / 2) || (right > 0.0f && rightBound && m_vCrosshair.x > SCREEN_WIDTH / 2)) {
-                m_vCrosshair.x -= right * mult;
-                m_vMapBase.x -= right * mult;
-                stopX = true;
-            }
-        }
 
-        if (isNearlyEqualF(m_vCrosshair.y, SCREEN_HEIGHT / 2, 16.0f)) {
+        if (isNearlyEqualF(m_vCrosshair.y, SCREEN_HEIGHT / 2, 32.0f)) {
             if ((up < 0.0f && topBound || up > 0.0f && bottomBound)) {
                 m_vCrosshair.y = SCREEN_HEIGHT / 2;
                 m_vMapBase.y -= up * mult;
             }
         }
-        else {
-            if ((up < 0.0f && m_vCrosshair.y < SCREEN_HEIGHT / 2) || (up > 0.0f && m_vCrosshair.y > SCREEN_HEIGHT / 2)) {
-                m_vCrosshair.y -= up * mult;
-                m_vMapBase.y -= up * mult;
-                stopY = true;
-            }
-        }
-
-        if (!stopX)
-            m_vCrosshair.x += right * mult;
-
-        if (!stopY)
-            m_vCrosshair.y += up * mult;
+        m_vCrosshair.x += right * mult;
+        m_vCrosshair.y += up * mult;
     }
 
     if (mapZoomIn)
