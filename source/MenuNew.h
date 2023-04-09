@@ -10,6 +10,10 @@
 #define RADAR_NUM_TILES (MAP_SIZE / RADAR_TILE_SIZE)
 #define RADAR_BLIPS_SCALE 14.0f
 
+#define LCSFICATION 1
+#define MAX_LEGEND_ENTRIES 32
+#define LEGEND_BLIP_SCALE 14.0f
+
 #include "plugin.h"
 #include "CMenuManager.h"
 #include "CRadar.h"
@@ -32,6 +36,10 @@ public:
     bool clearInput;
     Settings settings;
 
+#ifdef LCSFICATION
+    bool m_bMapLegend;
+#endif
+
 public:
     CMenuNew();
     ~CMenuNew();
@@ -50,6 +58,13 @@ public:
     float GetMenuMapTileSize();
     float GetMenuMapWholeSize();
     void DrawLegend();
+
+#ifdef LCSFICATION
+    void DrawLegendEntry(float x, float y, short id, CRGBA* col);
+    void AddBlipToToLegendList(short id, CRGBA const& col = 0);
+#endif
+
 };
 
 extern std::unique_ptr<CMenuNew> MenuNew;
+extern CSprite2d** RadarSpritesArray;

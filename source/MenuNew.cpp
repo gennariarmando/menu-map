@@ -13,9 +13,19 @@
 #include "CFont.h"
 #include "CText.h"
 
+#ifdef LCSFICATION
+#include "CStats.h"
+#include "Other.h"
+
+static short MapLegendList[32] = {};
+static short MapLegendCounter = 0;
+CRGBA MapLegendBlipColor[32] = {};
+#endif
+
 using namespace plugin;
 
 std::unique_ptr<CMenuNew> MenuNew;
+CSprite2d** RadarSpritesArray = pRadarSprites;
 
 CMenuNew::CMenuNew() {
     menuManager = &FrontEndMenuManager;
@@ -26,10 +36,15 @@ CMenuNew::CMenuNew() {
     targetBlipWorldPos = {};
     clearInput = false;
     settings.Read();
+    m_bMapLegend = true;
 }
 
 CMenuNew::~CMenuNew() {
     menuManager = nullptr;
+    
+#ifdef LCSFICATION
+    RadarSpritesArray = patch::Get<CSprite2d**>(0x4A6004 + 3);
+#endif
 }
 
 void CMenuNew::DrawMap() {
@@ -83,6 +98,44 @@ void CMenuNew::DrawMap() {
         rect.bottom = rect.top + mapZoom;
     }
 
+#ifdef LCSFICATION
+#ifdef GTA3
+    CRect dark;
+
+    dark.left = m_vMapBase.x;
+    dark.top = m_vMapBase.y;
+    dark.right = m_vMapBase.x + mapZoom;
+    dark.bottom = m_vMapBase.y + mapZoom;
+
+    dark.left -= mapHalfSize;
+    dark.top -= mapHalfSize;
+    dark.right -= mapHalfSize;
+
+    // Right
+    //CSprite2d::DrawRect(CRect(dark.right + (mapZoom * 4.4f), dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 8.0f), dark.bottom + mapHalfSize), CRGBA(0, 0, 0, 200));
+
+    // Center
+    if (!CStats::IndustrialPassed) {
+        CSprite2d::DrawRect(CRect(dark.right + (mapZoom * 2.3f), dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 4.4f), dark.bottom + mapHalfSize), CRGBA(0, 0, 0, 200));
+    }
+
+    // Left
+    if (!CStats::CommercialPassed) {
+        CSprite2d::DrawRect(CRect(dark.left, dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 2.3f), dark.bottom + mapHalfSize), CRGBA(0, 0, 0, 200));
+        CSprite2d::DrawRect(CRect(dark.left, dark.top, dark.right + (mapZoom * 8.0f), dark.top + (mapZoom * 3.4f)), CRGBA(0, 0, 0, 200));
+
+        if (CStats::IndustrialPassed) {
+            CSprite2d::DrawRect(CRect(
+                dark.right + (mapZoom * 2.3f), dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 2.6f), dark.bottom - (mapZoom * 1.1f)), CRGBA(0, 0, 0, 200));
+
+
+            CSprite2d::DrawRect(CRect(
+                dark.right + (mapZoom * 2.6f), dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 2.7f), dark.bottom - (mapZoom * 1.3f)), CRGBA(0, 0, 0, 200));
+        }
+    }
+#endif
+#endif
+
     DrawBlips();
     DrawCrosshair(m_vCrosshair.x, m_vCrosshair.y);
     DrawZone();
@@ -91,6 +144,14 @@ void CMenuNew::DrawMap() {
     DrawLegend();
     menuManager->m_bDrawRadarOrMap = false;
     menuManager->DisplayHelperText("FEH_MPH");
+#endif
+
+#ifdef LCSFICATION
+    DrawLegend();
+
+    MapLegendCounter = 0;
+    memset(MapLegendList, 0, sizeof(MapLegendList));
+
 #endif
 
 }
@@ -203,7 +264,7 @@ void CMenuNew::DrawBlips() {
 #ifdef GTASA
             & CRadar::RadarBlipSprites[id];
 #else
-            pRadarSprites[id];
+            RadarSpritesArray[id];
 #endif
         CEntity* e = NULL;
 
@@ -221,7 +282,11 @@ void CMenuNew::DrawBlips() {
 #else
                         menuManager->FadeIn(255)
 #endif
-                        ));
+                    ));
+
+#ifdef LCSFICATION
+                    AddBlipToToLegendList(id);
+#endif
                 }
                 else {
                     int level = 0;
@@ -234,13 +299,16 @@ void CMenuNew::DrawBlips() {
                         else
                             level = 0;
                     }
-                    DrawLevel(pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE * 0.45f), ScaleY(RADAR_BLIPS_SCALE * 0.45f), level, CRGBA(col.r, col.g, col.b,
+                    DrawLevel(pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE * 0.5f), ScaleY(RADAR_BLIPS_SCALE * 0.5f), level, CRGBA(col.r, col.g, col.b,
 #ifdef GTASA
                         255
 #else
                         menuManager->FadeIn(255)
 #endif                    
-                        ));
+                    ));
+#ifdef LCSFICATION
+                    AddBlipToToLegendList(-1, col);
+#endif               
                 }
             }
             break;
@@ -288,6 +356,10 @@ void CMenuNew::DrawBlips() {
                         menuManager->FadeIn(255)
 #endif
                     ));
+
+#ifdef LCSFICATION
+                    AddBlipToToLegendList(id);
+#endif
                 }
                 else {
                     int level = 0;
@@ -300,13 +372,16 @@ void CMenuNew::DrawBlips() {
                         else
                             level = 0;
                     }
-                    DrawLevel(pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE * 0.45f), ScaleY(RADAR_BLIPS_SCALE * 0.45f), level, CRGBA(col.r, col.g, col.b,
+                    DrawLevel(pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE * 0.5f), ScaleY(RADAR_BLIPS_SCALE * 0.5f), level, CRGBA(col.r, col.g, col.b,
 #ifdef GTASA
                         255
 #else
                         menuManager->FadeIn(255)
 #endif
                     ));
+#ifdef LCSFICATION
+                    AddBlipToToLegendList(-2, col);
+#endif
                 }
             }
             break;
@@ -320,28 +395,38 @@ void CMenuNew::DrawBlips() {
             float x;
             float y;
             unsigned short sprite;
+            unsigned char island;
         };
         std::vector<fb> pos = {
-            { 1071.2f, -400.0f, RADAR_SPRITE_WEAPON }, // ammu1
-            { 345.5f, -713.5f, RADAR_SPRITE_WEAPON }, // ammu2
-            { -1200.8f, -24.5f, RADAR_SPRITE_WEAPON }, // ammu3
-            { 925.0f, -359.5f, RADAR_SPRITE_SPRAY }, // spray1
-            { 379.0f, -493.7f, RADAR_SPRITE_SPRAY  }, // spray2
-            { -1142.0f, 34.7f, RADAR_SPRITE_SPRAY }, // spray3
-            { 1282.1f, -104.8f, RADAR_SPRITE_BOMB }, // bomb1
-            { 380.0f, -576.6f, RADAR_SPRITE_BOMB }, // bomb2
-            { -1082.5f, 55.2f, RADAR_SPRITE_BOMB }, // bomb3
+            { 1071.2f, -400.0f, RADAR_SPRITE_WEAPON, 0 }, // ammu1
+            { 345.5f, -713.5f, RADAR_SPRITE_WEAPON, 1 }, // ammu2
+            { -1200.8f, -24.5f, RADAR_SPRITE_WEAPON, 2 }, // ammu3
+            { 925.0f, -359.5f, RADAR_SPRITE_SPRAY, 0 }, // spray1
+            { 379.0f, -493.7f, RADAR_SPRITE_SPRAY, 1  }, // spray2
+            { -1142.0f, 34.7f, RADAR_SPRITE_SPRAY, 2 }, // spray3
+            { 1282.1f, -104.8f, RADAR_SPRITE_BOMB, 0 }, // bomb1
+            { 380.0f, -576.6f, RADAR_SPRITE_BOMB, 1 }, // bomb2
+            { -1082.5f, 55.2f, RADAR_SPRITE_BOMB, 2 }, // bomb3
         };
 
         for (auto& it : pos) {
+#ifdef LCSFICATION
+            if ((it.island == 1 && !CStats::IndustrialPassed) || (it.island == 2 && !CStats::CommercialPassed))
+                continue;
+#endif
+
             CVector2D pos = WorldToMap({ it.x, it.y, 0.0f });
-            DrawSpriteWithRotation(pRadarSprites[it.sprite], pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), 0.0f, CRGBA(255, 255, 255,
+            DrawSpriteWithRotation(RadarSpritesArray[it.sprite], pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), 0.0f, CRGBA(255, 255, 255,
 #ifdef GTASA
                 255
 #else
                 menuManager->FadeIn(255)
 #endif
             ));
+
+#ifdef LCSFICATION
+            AddBlipToToLegendList(it.sprite);
+#endif
         }
     }
 #endif
@@ -350,6 +435,10 @@ void CMenuNew::DrawBlips() {
     if (targetBlipIndex) {
         CVector2D pos = WorldToMap(targetBlipWorldPos);
         DrawWayPoint(pos.x, pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE));
+
+#ifdef LCSFICATION
+        AddBlipToToLegendList(-3);
+#endif
     }
 
     CPed* playa = FindPlayerPed();
@@ -358,14 +447,14 @@ void CMenuNew::DrawBlips() {
         CVector2D pos = WorldToMap(playa->GetPosition());
         float angle = FindPlayerHeading(
 #ifdef GTASA 
-        0
+            0
 #endif
         );
         CSprite2d* sprite =
 #ifdef GTASA
-            &CRadar::RadarBlipSprites[RADAR_SPRITE_CENTRE];
+            & CRadar::RadarBlipSprites[RADAR_SPRITE_CENTRE];
 #else 
-            pRadarSprites[RADAR_SPRITE_CENTRE];
+            RadarSpritesArray[RADAR_SPRITE_CENTRE];
 #endif
 
         if (sprite && flashItem(1000, 200))
@@ -376,6 +465,10 @@ void CMenuNew::DrawBlips() {
                 menuManager->FadeIn(255)
 #endif
             ));
+
+#ifdef LCSFICATION
+        AddBlipToToLegendList(RADAR_SPRITE_CENTRE);
+#endif
     }
 }
 
@@ -485,6 +578,9 @@ void CMenuNew::MapInput() {
 #ifdef GTAVC
     if (showLegend)
         menuManager->m_bMapLegend = menuManager->m_bMapLegend == false;
+#elif LCSFICATION
+    if (showLegend)
+        m_bMapLegend = m_bMapLegend == false;
 #endif
 
     if (menuManager->m_bShowMouse) {
@@ -641,9 +737,14 @@ float CMenuNew::GetMenuMapWholeSize() {
 }
 
 void CMenuNew::DrawLegend() {
+#if defined(GTAVC) || defined(LCSFICATION)
 #ifdef GTAVC
     if (!menuManager->m_bMapLegend)
         return;
+#elif LCSFICATION
+    if (m_bMapLegend)
+        return;
+#endif
 
     const float shift = 182.0f;
     float x = SCREEN_WIDTH / 2;
@@ -656,13 +757,18 @@ void CMenuNew::DrawLegend() {
     CFont::SetRightJustifyOff();
 
     CFont::SetDropShadowPosition(1);
-    CFont::SetDropColor(CRGBA(0, 0, 0, menuManager->FadeIn(255)));
-    CFont::SetFontStyle(1);
-    CFont::SetColor(CRGBA(225, 225, 225, menuManager->FadeIn(255)));
+    CFont::SetDropColor(CRGBA(0, 0, 0, 255));
+    CFont::SetFontStyle(0);
+    CFont::SetColor(CRGBA(225, 225, 225, 255));
     CFont::SetScale(ScaleX(0.34f), ScaleY(0.48f));
 
+#ifdef GTAVC
     CSprite2d::DrawRect(CRect(x - ScaleX(shift * 1.1f), y - ScaleY(8.0f), x + ScaleX(shift * 1.1f), y + ScaleY(8.0f) + ScaleY(17.0f * (CRadar::MapLegendCounter - (1 * CRadar::MapLegendCounter / 2)))), CRGBA(0, 0, 0, menuManager->FadeIn(155)));
+#elif LCSFICATION
+    CSprite2d::DrawRect(CRect(x - ScaleX(shift * 1.1f), y - ScaleY(8.0f), x + ScaleX(shift * 1.1f), y + ScaleY(8.0f) + ScaleY(17.0f * (MapLegendCounter - (1 * MapLegendCounter / 2)))), CRGBA(0, 0, 0, menuManager->FadeIn(155)));
+#endif
 
+#ifdef GTAVC
     for (int i = 0; i < CRadar::MapLegendCounter; i += 2) {
         x = SCREEN_WIDTH / 2;
         x -= ScaleX(shift);
@@ -676,5 +782,93 @@ void CMenuNew::DrawLegend() {
 
         y += ScaleY(18.0f);
     }
+#elif LCSFICATION
+    for (int i = 0; i < MapLegendCounter; i += 2) {
+        CRGBA col = MapLegendBlipColor[i];
+        x = SCREEN_WIDTH / 2;
+        x -= ScaleX(shift);
+        DrawLegendEntry(x, y, MapLegendList[i], &col);
+
+
+        if (MapLegendList[i + 1] != RADAR_SPRITE_NONE && i < 74) {
+            x = SCREEN_WIDTH / 2;
+            x += ScaleX(shift / 8);
+            DrawLegendEntry(x, y, MapLegendList[i + 1], &col);
+        }
+
+        y += ScaleY(18.0f);
+    }
+#endif
 #endif
 }
+
+#ifdef LCSFICATION
+void CMenuNew::DrawLegendEntry(float x, float y, short id, CRGBA* col) {
+    CFont::SetPropOn();
+    CFont::SetWrapx(SCREEN_WIDTH);
+    CFont::SetBackGroundOnlyTextOff();
+    CFont::SetCentreOff();
+    CFont::SetRightJustifyOff();
+
+    CFont::SetDropShadowPosition(1);
+    CFont::SetDropColor(CRGBA(0, 0, 0, 255));
+    CFont::SetFontStyle(0);
+    CFont::SetColor(CRGBA(225, 225, 225, 255));
+    CFont::SetScale(ScaleX(0.34f), ScaleY(0.48f));
+
+    if (id == -3) {
+        DrawWayPoint(x, y + ScaleY(4.0f), ScaleX(LEGEND_BLIP_SCALE), ScaleY(LEGEND_BLIP_SCALE));
+    }
+    else if (id < 0) {
+        static int level = 0;
+        static int levelTime = 0;
+        CRGBA white = { 255, 255, 255, 255 };
+
+        if (!col)
+            col = &white;
+
+        if (levelTime < CTimer::m_snTimeInMillisecondsPauseMode) {
+            levelTime = CTimer::m_snTimeInMillisecondsPauseMode + 1000;
+            level++;
+
+            if (level > 2)
+                level = 0;
+        }
+
+        DrawLevel(x, y + ScaleY(4.0f), ScaleX(LEGEND_BLIP_SCALE * 0.5f), ScaleY(LEGEND_BLIP_SCALE * 0.5f), level, CRGBA(col->r, col->g, col->b, 255));
+    }
+    else {
+        CSprite2d* sprite = RadarSpritesArray[id];
+
+        if (sprite)
+            DrawSpriteWithRotation(sprite, x, y + ScaleY(4.0f), ScaleX(LEGEND_BLIP_SCALE), ScaleY(LEGEND_BLIP_SCALE), 0.0f, CRGBA(255, 255, 255, 255));
+    }
+
+    char buff[16];
+    if (id < 0)
+        id = abs(id) + 100;
+
+    sprintf(buff, "LG_%02d", id);
+
+    const float _x = x + ScaleX(LEGEND_BLIP_SCALE);
+    const float _y = y;
+    CFont::PrintString(_x, _y, buff);
+}
+
+void CMenuNew::AddBlipToToLegendList(short id, CRGBA const& col) {
+    bool found = false;
+
+    for (int i = 0; i < MAX_LEGEND_ENTRIES; i++) {
+        if (MapLegendList[i] == id) {
+            found = true;
+        }
+    }
+
+    if (!found) {
+        MapLegendBlipColor[MapLegendCounter] = col;
+        MapLegendList[MapLegendCounter] = id;
+        MapLegendCounter++;
+    }
+}
+
+#endif

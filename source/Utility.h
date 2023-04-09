@@ -107,11 +107,11 @@ static void DrawWayPoint(float x, float y, float w, float h) {
 static void DrawLevel(float x, float y, float w, float h, int type, CRGBA const& col) {
     switch (type) {
     case 1:
-        DrawTriangle(x, y, h * 1.6f, DegToRad(0.0f), CRGBA(0, 0, 0, 255));
+        DrawTriangle(x, y + ScaleY(0.5f), h * 1.5f, DegToRad(0.0f), CRGBA(0, 0, 0, 255));
         DrawTriangle(x, y, h, DegToRad(0.0f), col);
         break;
     case 2:
-        DrawTriangle(x, y, h * 1.6f, DegToRad(180.0f), CRGBA(0, 0, 0, 255));
+        DrawTriangle(x, y - ScaleY(0.5f), h * 1.5f, DegToRad(180.0f), CRGBA(0, 0, 0, 255));
         DrawTriangle(x, y, h, DegToRad(180.0f), col);
         break;
     default:
