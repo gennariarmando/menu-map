@@ -4,11 +4,15 @@
 #include "MenuNew.h"
 #include "Utility.h"
 
+#include "ModuleList.hpp"
+
 using namespace plugin;
 
 class MenuMap {
 public:
     MenuMap() {
+        MenuNew = std::make_unique<CMenuNew>();
+
 #ifdef _DEBUG
         AllocConsole();
         freopen("conin$", "r", stdin);
@@ -35,8 +39,8 @@ public:
 
         plugin::patch::Set(0x611930 + sizeof(CMenuScreen) * MENUPAGE_MAP, mapMenuPage);
 
-        ThiscallEvent <AddressList<0x47AB12, H_CALL>, PRIORITY_AFTER, ArgPickN<CMenuManager*, 0>, void(CMenuManager*)> onDrawingMenuManager;
-        onDrawingMenuManager += [](CMenuManager* menuManager) {
+        ThiscallEvent <AddressList<0x47AB12, H_CALL>, PRIORITY_AFTER, ArgPickN<CMenuManager*, 0>, void(CMenuManager*)> onDrawStandardMenu;
+        onDrawStandardMenu += [](CMenuManager* menuManager) {
             if (!MenuNew || !MenuNew->menuManager)
                 return;
 
@@ -51,15 +55,23 @@ public:
                 break;
             }
         };
+
+        ThiscallEvent <AddressList<0x48E721, H_CALL, 0x48C8A4, H_CALL>, PRIORITY_AFTER, ArgPickN<CMenuManager*, 0>, void(CMenuManager*)> onProcess;
+        onProcess += [](CMenuManager* menuManager) {
+            if (!menuManager->m_bMenuActive) {
+                MenuNew->ResetMap(true);
+            }
+        };
+
 #else
-        auto drawMap = [](CMenuManager*, int) {
+        ThiscallEvent <AddressList<0x4A325E, H_CALL, 0x4A32AD, H_CALL>, PRIORITY_AFTER, ArgPickN<CMenuManager*, 0>, void(CMenuManager*, int)> onDrawStandardMenu;
+        onDrawStandardMenu += [](CMenuManager* menuManager) {
             if (!MenuNew || !MenuNew->menuManager)
                 return;
 
             switch (MenuNew->menuManager->m_nCurrentMenuPage) {
             case MENUPAGE_MAP:
                 MenuNew->MapInput();
-                MenuNew->DrawMap();
                 break;
             default:
                 MenuNew->ResetMap(true);
@@ -72,19 +84,36 @@ public:
         plugin::patch::RedirectCall(0x57BA28, (void(__fastcall*)(CMenuManager*, int))drawMap);
         plugin::patch::Nop(0x057BA08, 9);
 #elif GTAVC
-        plugin::patch::RedirectCall(0x4A2CC2, (void(__fastcall*)(CMenuManager*, int))drawMap);
-        plugin::patch::Nop(0x4A2CB7, 9);
+        auto drawMap = [](CMenuManager*, int) {
+            if (!MenuNew || !MenuNew->menuManager)
+                return;
 
-        plugin::patch::RedirectCall(0x4A273A, (void(__fastcall*)(CMenuManager*, int))drawMap);
-        plugin::patch::Nop(0x4A272F, 9);
+            MenuNew->DrawMap();
+        };
+        plugin::patch::RedirectJump(0x49A5B7, (void(__fastcall*)(CMenuManager*, int))drawMap);
 
+        // No map draw
+        //plugin::patch::SetUChar(0x4A2CBE, 0xEB);
+        //plugin::patch::SetUChar(0x4A2736, 0xEB);
+
+        // No map input
         plugin::patch::Set<BYTE>(0x4973C9, 0xEB);
         plugin::patch::Set<BYTE>(0x496600 + 6, -1);
+
+        ThiscallEvent <AddressList<0x4A4433, H_CALL, 0x4A5C88, H_CALL>, PRIORITY_AFTER, ArgPickN<CMenuManager*, 0>, void(CMenuManager*)> onProcess;
+        onProcess += [](CMenuManager* menuManager) {
+            if (!menuManager->m_bMenuActive) {
+                MenuNew->ResetMap(true);
+            }
+        };
 #endif
 #endif
 
         plugin::Events::initRwEvent += [] {
-            MenuNew = std::make_unique<CMenuNew>();
+            const HMODULE h = ModuleList().GetByPrefix(L"skyui");
+            if (h) {
+                MenuNew->settings.skyUI = true;
+            }
         };
 
         plugin::Events::drawBlipsEvent += [] {
@@ -98,7 +127,7 @@ public:
                 CRadar::LimitRadarPoint(in);
                 CRadar::TransformRadarPointToScreenSpace(out, in);
 
-                DrawWayPoint(out.x, out.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE));
+                DrawWayPoint(out.x, out.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), CRGBA(255, 0, 0, 255));
             }
         };
     }

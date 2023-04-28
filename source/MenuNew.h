@@ -10,7 +10,10 @@
 #define RADAR_NUM_TILES (MAP_SIZE / RADAR_TILE_SIZE)
 #define RADAR_BLIPS_SCALE 14.0f
 
-#define LCSFICATION 1
+#ifdef GTA3
+#define LCSFICATION
+#endif
+
 #define MAX_LEGEND_ENTRIES 32
 #define LEGEND_BLIP_SCALE 14.0f
 
@@ -25,6 +28,12 @@ enum {
 #endif
 };
 
+enum {
+    RADAR_DESTINATION = -1,
+    RADAR_OBJECTIVE = - 2,
+    RADAR_WAYPOINT = -8
+};
+
 class CMenuNew {
 public:
     CMenuManager* menuManager;
@@ -35,14 +44,21 @@ public:
     CVector targetBlipWorldPos;
     bool clearInput;
     Settings settings;
+    int previousTimeInMilliseconds;
 
-#ifdef LCSFICATION
-    bool m_bMapLegend;
+#if defined(GTA3) && defined(LCSFICATION)
+    bool m_bPrefsShowLegends;
 #endif
 
 public:
     CMenuNew();
     ~CMenuNew();
+
+    uint32_t GetAlpha(uint32_t a = 255);
+    float GetMenuOffsetX();
+    bool GetInputEnabled();
+    int GetTimeToWait();
+
     void DrawMap();
     void DrawCrosshair(float x, float y);
     void DrawZone();
@@ -59,7 +75,7 @@ public:
     float GetMenuMapWholeSize();
     void DrawLegend();
 
-#ifdef LCSFICATION
+#if defined(GTA3) && defined(LCSFICATION)
     void DrawLegendEntry(float x, float y, short id, CRGBA* col);
     void AddBlipToToLegendList(short id, CRGBA const& col = 0);
 #endif

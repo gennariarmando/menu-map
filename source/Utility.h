@@ -3,36 +3,48 @@
 #include "extensions/Screen.h"
 #include "CSprite2d.h"
 
-#define defaultScreenWidth 640.0f
-#define defaultScreenHeight 448.0f
-#define defaultAspectRatio defaultScreenWidth / defaultScreenHeight
+#define DEFAULT_SCREEN_WIDTH 640.0f
+#define DEFAULT_SCREEN_HEIGHT 480.0f
+#define DEFAULT_SCREEN_ASPECT_RATIO DEFAULT_SCREEN_WIDTH / DEFAULT_SCREEN_HEIGHT
 #define flashItem(on, off) (CTimer::m_snTimeInMillisecondsPauseMode % on + off < on)
 #define clamp(v, low, high) ((v)<(low) ? (low) : (v)>(high) ? (high) : (v))
-#define isNearlyEqualF(a, b, t) (fabs(a - b) <= t)
-
-static float DegToRad(float x) {
-    return (x * M_PI / 180.0f);
-}
-
-static float RadToDeg(float x) {
-    return (x * 180.0f / M_PI);
-}
 
 static float GetAspectRatio() {
 #ifdef GTA3
     float& fScreenAspectRatio = *(float*)0x5F53C0;
-#else
+#elif GTAVC
     float& fScreenAspectRatio = *(float*)0x94DD38;
+#elif GTASA
+    float& fScreenAspectRatio = CDraw::ms_fAspectRatio;
 #endif
     return fScreenAspectRatio;
 }
 
-static float ScaleX(float a) {
-    return static_cast<float>(a * SCREEN_WIDTH / defaultScreenWidth) * defaultAspectRatio / GetAspectRatio();
+#define SCREEN_ASPECT_RATIO GetAspectRatio() // (SCREEN_WIDTH / SCREEN_HEIGHT)
+
+static float ScaleX(float x) {
+    float f = ((x) * (float)SCREEN_WIDTH / DEFAULT_SCREEN_WIDTH) * DEFAULT_SCREEN_ASPECT_RATIO / SCREEN_ASPECT_RATIO;
+    return f;
 }
 
-static float ScaleY(float a) {
-    return static_cast<float>(a * SCREEN_HEIGHT / defaultScreenHeight);
+static float ScaleXKeepCentered(float x) {
+    float f = ((SCREEN_WIDTH == DEFAULT_SCREEN_WIDTH) ? (x) : (SCREEN_WIDTH - ScaleX(DEFAULT_SCREEN_WIDTH)) / 2 + ScaleX((x)));
+    return f;
+}
+
+static float ScaleY(float y) {
+    float f = ((y) * (float)SCREEN_HEIGHT / DEFAULT_SCREEN_HEIGHT);
+    return f;
+}
+
+static float ScaleW(float w) {
+    float f = ((w) * (float)SCREEN_WIDTH / DEFAULT_SCREEN_WIDTH) * DEFAULT_SCREEN_ASPECT_RATIO / SCREEN_ASPECT_RATIO;
+    return f;
+}
+
+static float ScaleH(float h) {
+    float f = ((h) * (float)SCREEN_HEIGHT / DEFAULT_SCREEN_HEIGHT);
+    return f;
 }
 
 static void Draw2DPolygon(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4, const CRGBA& color) {
@@ -99,20 +111,20 @@ static void DrawUnfilledRect(float x, float y, float thinkness, float w, float h
     CSprite2d::DrawRect(CRect(x, y, x + line, y + (h)), col);
 }
 
-static void DrawWayPoint(float x, float y, float w, float h) {
-    DrawUnfilledRect(x, y, ScaleY(3.0f), w, h, CRGBA(0, 0, 0, 255));
-    DrawUnfilledRect(x, y, ScaleY(1.0f), w * 0.85f, h * 0.85f, CRGBA(255, 0, 0, 255));
+static void DrawWayPoint(float x, float y, float w, float h, CRGBA col) {
+    DrawUnfilledRect(x, y, ScaleY(3.0f), w, h, CRGBA(0, 0, 0, col.a));
+    DrawUnfilledRect(x, y, ScaleY(1.0f), w * 0.85f, h * 0.85f, col);
 }
 
 static void DrawLevel(float x, float y, float w, float h, int type, CRGBA const& col) {
     switch (type) {
     case 1:
-        DrawTriangle(x, y + ScaleY(0.5f), h * 1.5f, DegToRad(0.0f), CRGBA(0, 0, 0, 255));
-        DrawTriangle(x, y, h, DegToRad(0.0f), col);
+        DrawTriangle(x, y + ScaleY(0.5f), h * 1.5f, plugin::DegToRad(0.0f), CRGBA(0, 0, 0, 255));
+        DrawTriangle(x, y, h, plugin::DegToRad(0.0f), col);
         break;
     case 2:
-        DrawTriangle(x, y - ScaleY(0.5f), h * 1.5f, DegToRad(180.0f), CRGBA(0, 0, 0, 255));
-        DrawTriangle(x, y, h, DegToRad(180.0f), col);
+        DrawTriangle(x, y - ScaleY(0.5f), h * 1.5f, plugin::DegToRad(180.0f), CRGBA(0, 0, 0, 255));
+        DrawTriangle(x, y, h, plugin::DegToRad(180.0f), col);
         break;
     default:
         CSprite2d::DrawRect(CRect(x - (w * 0.65f), y - (h * 0.65f), x + (w * 0.65f), y + (h * 0.65f)), CRGBA(0, 0, 0, 255));

@@ -24,12 +24,12 @@ project "menu-map"
 	}
 	
 	includedirs {
-		"vendor/GInputAPI",
 		"$(PLUGIN_SDK_DIR)/shared/",
 		"$(PLUGIN_SDK_DIR)/shared/game/",
 	}
 	
 	filter { "configurations:*III" }
+		links { "d3d8", "d3dx8" }
 		defines { "GTA3", "PLUGIN_SGV_10EN" }
 		includedirs {
 			"$(PLUGIN_SDK_DIR)/plugin_III/",
@@ -41,6 +41,7 @@ project "menu-map"
 		postbuildcommands "copy /y \"$(TargetPath)\" \"$(GTA_III_DIR)\\scripts\\MenuMapIII.asi\""
 		
 	filter { "configurations:*VC" }	
+		links { "d3d8", "d3dx8" }
 		defines { "GTAVC", "PLUGIN_SGV_10EN" }	
 		includedirs {
 			"$(PLUGIN_SDK_DIR)/plugin_vc/",
@@ -66,6 +67,7 @@ project "menu-map"
 	filter { }
 	
 	libdirs { 
+		"vendor/dx8",
 		"$(PLUGIN_SDK_DIR)/output/lib/",
 		"$(DXSDK_DIR)/Lib/x86",
 	}
