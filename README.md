@@ -1,5 +1,5 @@
 # [Interactive Menu Map for GTA: III and GTA: VC](https://gtaforums.com/topic/982089-interactive-pause-menu-map-for-gta-iii-and-gta-vc/)
-Adds an interactive map to GTA: III and replaces the default one on GTA: VC the ability to display blips, markers, a waypoint and zones.
+Adds an interactive map to GTA: III and replaces the default one on GTA: VC.
 
 ## Features:
 - Pause menu map.
