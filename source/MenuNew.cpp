@@ -901,7 +901,7 @@ void CMenuNew::DrawLegendEntry(float x, float y, short id, CRGBA* col) {
     if (id == RADAR_WAYPOINT) {
         DrawWayPoint(x, y + ScaleY(4.0f), ScaleX(LEGEND_BLIP_SCALE), ScaleY(LEGEND_BLIP_SCALE), CRGBA(255, 0, 0, GetAlpha(255)));
     }
-    else if (id < RADAR_DESTINATION) {
+    else if (id <= RADAR_DESTINATION) {
         static int level = 0;
         static int levelTime = 0;
         CRGBA white = { 255, 255, 255, 255 };
