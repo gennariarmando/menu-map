@@ -1,12 +1,14 @@
 #pragma once
 #include "ModuleList.hpp"
 
+class ScmExtender {
+private:
 struct ApiCALL {
 	static inline HMODULE h = nullptr;
 
 	static void* GetFunctionByName(const char* name) {
 		if (!h)
-			h = ModuleList().GetByPrefix(L"skyui");
+			h = ModuleList().GetByPrefix(L"ScriptCommandExtender");
 
 		if (h) {
 			auto a = (void* (*)())GetProcAddress(h, name);
@@ -15,7 +17,7 @@ struct ApiCALL {
 				return a;
 			}
 		}
-		return NULL;
+		return nullptr;
 	}
 
 	template <typename... Args>
@@ -32,7 +34,7 @@ struct ApiCALL {
 		if (f)
 			return reinterpret_cast<Ret(__cdecl*)(Args...)>(f)(args...);
 
-		return NULL;
+		return nullptr;
 	}
 
 	template <typename... Args>
@@ -49,33 +51,28 @@ struct ApiCALL {
 		if (f)
 			return reinterpret_cast<Ret(__thiscall*)(Args...)>(f)(args...);
 
-		return NULL;
+		return nullptr;
 	}
 };
 
-class SkyUI {
 public:
-	static inline uint32_t GetAlpha(uint32_t a = 255) {
-		return ApiCALL::CallAndReturn<uint32_t>(__FUNCTION__, a);
+	static inline void AddOneCommand(int32_t command, int8_t (*func)(int32_t*)) {
+		ApiCALL::Call(__FUNCTION__, command, func);
 	}
 
-	static inline float GetMenuOffsetX() {
-		return ApiCALL::CallAndReturn<float>(__FUNCTION__);
+	static inline void CollectParams(int16_t count) {
+		ApiCALL::Call(__FUNCTION__, count);
 	}
 
-	static inline bool GetGTA3LCS() {
+	static inline void StoreParams(int16_t count) {
+		ApiCALL::Call(__FUNCTION__, count);
+	}
+
+	static inline void UpdateCompareFlag(uint8_t flag) {
+		ApiCALL::Call(__FUNCTION__, flag);
+	}
+
+	static inline bool IsMissionScript() {
 		return ApiCALL::CallAndReturn<bool>(__FUNCTION__);
-	}
-
-	static inline uint8_t GetCurrentInput() {
-		return ApiCALL::CallAndReturn<uint8_t>(__FUNCTION__);
-	}
-
-	static inline int32_t GetTimeToWaitBeforeStateChange() {
-		return ApiCALL::CallAndReturn<int32_t>(__FUNCTION__);
-	}
-
-	static inline uint8_t GetCheckHoverForStandardInput(CMenuManager* _this) {
-		return ApiCALL::CallAndReturn<uint8_t, CMenuManager*>(__FUNCTION__, _this);
 	}
 };

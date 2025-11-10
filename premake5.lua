@@ -11,8 +11,9 @@ project "menu-map"
 	characterset ("MBCS")
 	linkoptions "/SAFESEH:NO"
 	buildoptions { "-std:c++latest", "/permissive" }
-	defines { "_CRT_SECURE_NO_WARNINGS", "_CRT_NON_CONFORMING_SWPRINTFS", "_USE_MATH_DEFINES" }
+	defines { "_CRT_SECURE_NO_WARNINGS", "_CRT_NON_CONFORMING_SWPRINTFS", "_USE_MATH_DEFINES", "RW" }
 	disablewarnings { "4244", "4800", "4305", "4073", "4838", "4996", "4221", "4430", "26812", "26495", "6031" }
+    cppdialect "C++latest"
 
 	files {
 		"source/**.*",
@@ -34,6 +35,7 @@ project "menu-map"
 		includedirs {
 			"$(PLUGIN_SDK_DIR)/plugin_III/",
 			"$(PLUGIN_SDK_DIR)/plugin_III/game_III/",
+			"$(PLUGIN_SDK_DIR)/plugin_III/game_III/rw",
 		}
 		targetname "MenuMapIII"
 		debugdir "$(GTA_III_DIR)"
@@ -46,6 +48,7 @@ project "menu-map"
 		includedirs {
 			"$(PLUGIN_SDK_DIR)/plugin_vc/",
 			"$(PLUGIN_SDK_DIR)/plugin_vc/game_vc/",
+			"$(PLUGIN_SDK_DIR)/plugin_vc/game_vc/rw",
 			"$(RWD3D9_DIR)/source"
 		}
 		targetname "MenuMapVC"
@@ -58,6 +61,7 @@ project "menu-map"
 		includedirs {
 			"$(PLUGIN_SDK_DIR)/plugin_sa/",
 			"$(PLUGIN_SDK_DIR)/plugin_sa/game_sa/",
+			"$(PLUGIN_SDK_DIR)/plugin_sa/game_sa/rw",
 		}
 		targetname "MenuMapSA"
 		debugdir "$(GTA_SA_DIR)"

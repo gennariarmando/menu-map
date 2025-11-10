@@ -1,15 +1,99 @@
 #include "plugin.h"
 #include "CMenuManager.h"
+#include "CTxdStore.h"
+#include "CTheScripts.h"
 
 #include "MenuNew.h"
 #include "Utility.h"
 
 #include "ModuleList.hpp"
 
+#include "debugmenu_public.h"
+
+#include "ScmExtenderAPI.h"
+#include "SaveExtenderAPI.h"
+
+#include "SpriteLoader.h"
+
 using namespace plugin;
+
+DebugMenuAPI gDebugMenuAPI;
 
 class MenuMap {
 public:
+#ifdef WITH_VCS_MAP_OPTIONS
+    //static void Save(std::string const& filename) {
+    //    std::ofstream file(filename, std::ios::binary | std::ios::trunc);
+    //    if (file.is_open()) {
+    //        size_t size = aPackages.size();
+    //        file.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    //
+    //        for (const auto& package : aPackages) {
+    //            const Collectable& value = package;
+    //            file.write(reinterpret_cast<const char*>(&value), sizeof(value));
+    //        }
+    //
+    //        size = aRampages.size();
+    //        file.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    //
+    //        for (const auto& rampage : aRampages) {
+    //            const Collectable& value = rampage;
+    //            file.write(reinterpret_cast<const char*>(&value), sizeof(value));
+    //        }
+    //
+    //        size = aUniqueStunts.size();
+    //        file.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    //
+    //        for (const auto& uniqueStunts : aUniqueStunts) {
+    //            const Collectable& value = uniqueStunts;
+    //            file.write(reinterpret_cast<const char*>(&value), sizeof(value));
+    //        }
+    //
+    //        file.close();
+    //    }
+    //}
+    //
+    //static void Load(std::string const& filename) {
+    //    std::ifstream file(filename, std::ios::binary);
+    //    if (file.is_open()) {
+    //        aPackages = {};
+    //        size_t size = 0;
+    //        file.read(reinterpret_cast<char*>(&size), sizeof(size));
+    //
+    //        for (size_t i = 0; i < size; i++) {
+    //            Collectable value;
+    //            file.read(reinterpret_cast<char*>(&value), sizeof(value));
+    //
+    //            aPackages.push_back(value);
+    //        }
+    //
+    //        aRampages = {};
+    //        size = 0;
+    //        file.read(reinterpret_cast<char*>(&size), sizeof(size));
+    //
+    //        for (size_t i = 0; i < size; i++) {
+    //            Collectable value;
+    //            file.read(reinterpret_cast<char*>(&value), sizeof(value));
+    //
+    //            aRampages.push_back(value);
+    //        }
+    //
+    //        aUniqueStunts = {};
+    //        size = 0;
+    //        file.read(reinterpret_cast<char*>(&size), sizeof(size));
+    //
+    //        for (size_t i = 0; i < size; i++) {
+    //            Collectable value;
+    //            file.read(reinterpret_cast<char*>(&value), sizeof(value));
+    //
+    //            aUniqueStunts.push_back(value);
+    //        }
+    //
+    //        file.close();
+    //    }
+    //}
+#endif
+
     MenuMap() {
         MenuNew = std::make_unique<CMenuNew>();
 
@@ -50,7 +134,10 @@ public:
                 MenuNew->DrawMap();
                 break;
             default:
-                MenuNew->ResetMap(true);
+#ifdef WITH_ANIMATION
+                if (!MenuNew->menuManager->m_bMenuActive)
+#endif
+                    MenuNew->ResetMap(true);
                 MenuNew->clearInput = true;
                 break;
             }
@@ -63,6 +150,103 @@ public:
             }
         };
 
+#ifdef WITH_VCS_MAP_OPTIONS
+        static CdeclEvent <AddressList<0x430652, H_CALL>, PRIORITY_AFTER, ArgPickN<int32_t, 0>, void(int32_t)> onNewPickup;
+        onNewPickup += [](int32_t id) {
+            auto const& pickup = CPickups::aPickUps[id];
+
+            if (pickup.m_nPickupType == ePickupType::PICKUP_COLLECTABLE1) {
+                Collectable col;
+                col.pos = pickup.m_vecPos;
+                col.removed = false;
+                aPackages.push_back(col);
+            }
+            else if (pickup.m_nPickupType == ePickupType::PICKUP_ONCE && pickup.m_nModelIndex == MODEL_KILLFRENZY) {
+                Collectable col;
+                col.pos = pickup.m_vecPos;
+                col.removed = false;
+                aRampages.push_back(col);
+            }
+        };
+
+        static CdeclEvent <AddressList<0x4312FA, H_CALL>, PRIORITY_AFTER, ArgPickN<CEntity*, 0>, void(CEntity*)> onRemoveCollectible;
+        onRemoveCollectible += [](CEntity* e) {
+            auto it = std::find_if(aPackages.begin(), aPackages.end(),
+                [&](const Collectable& c) {
+                return c.pos.x == e->GetPosition().x && c.pos.y == e->GetPosition().y && c.pos.z == e->GetPosition().z;
+            });
+            if (it != aPackages.end()) {
+                it->removed = true;
+                return;
+            }
+
+            it = std::find_if(aRampages.begin(), aRampages.end(),
+                [&](const Collectable& c) {
+                return c.pos.x == e->GetPosition().x && c.pos.y == e->GetPosition().y && c.pos.z == e->GetPosition().z;
+            });
+            if (it != aRampages.end()) {
+                it->removed = true;
+                return;
+            }
+        };
+
+        //static char* ValidSaveName = (char*)0x8E2CBC;
+        //static char* LoadFileName = (char*)0x9403C4;
+        //
+        //static CdeclEvent <AddressList<0x48C7CC, H_CALL>, PRIORITY_BEFORE, ArgPickNone, void()> onGenericLoad;
+        //onGenericLoad += []() {
+        //    std::string str = LoadFileName;
+        //
+        //    str = plugin::RemoveExtension(str);
+        //    str += ".a";
+        //    Load(str);
+        //    std::cout << "" << std::endl;
+        //};
+        //
+        //static CdeclEvent <AddressList<0x591F16, H_CALL>, PRIORITY_AFTER, ArgPickNone, void(int32_t)> onGenericSave;
+        //onGenericSave += []() {
+        //    std::string str = ValidSaveName;
+        //
+        //    str = plugin::RemoveExtension(str);
+        //    str += ".a";
+        //    Save(str);
+        //};
+
+        plugin::Events::shutdownRwEvent += []() {
+            RadarPackageSprite.Delete();
+            RadarRampageSprite.Delete();
+            RadarStuntJumpSprite.Delete();
+        };
+
+        plugin::Events::restartGameEvent += []() {
+            aPackages = {};
+            aRampages = {};
+            aUniqueStunts = {};
+        };
+
+        plugin::Events::initRwEvent += []() {
+            SaveExtender::OnSavingEvent([]() {
+                SaveExtender::Serialize("PACKAGES", aPackages, aPackages.size() * sizeof(Collectable));
+                SaveExtender::Serialize("RAMPAGES", aRampages, aRampages.size() * sizeof(Collectable));
+                SaveExtender::Serialize("UNIQUESTUNTS", aUniqueStunts, aUniqueStunts.size() * sizeof(Collectable));
+            });
+
+            SaveExtender::OnLoadingEvent([]() {
+                if (aPackages.empty())
+                    aPackages.resize(100);
+
+                if (aRampages.empty())
+                    aRampages.resize(100);
+
+                if (aUniqueStunts.empty())
+                    aUniqueStunts.resize(100);
+
+                SaveExtender::Retrieve("PACKAGES", &aPackages, aPackages.size() * sizeof(Collectable));
+                SaveExtender::Retrieve("RAMPAGES", &aRampages, aRampages.size() * sizeof(Collectable));
+                SaveExtender::Retrieve("UNIQUESTUNTS", &aUniqueStunts, aUniqueStunts.size() * sizeof(Collectable));
+            });
+        };
+#endif
 #else
         ThiscallEvent <AddressList<0x4A325E, H_CALL, 0x4A32AD, H_CALL>, PRIORITY_AFTER, ArgPickN<CMenuManager*, 0>, void(CMenuManager*, int)> onDrawStandardMenu;
         onDrawStandardMenu += [](CMenuManager* menuManager) {
@@ -108,12 +292,83 @@ public:
         };
 #endif
 #endif
+        plugin::Events::initRwEvent += []() {
+#ifdef WITH_VCS_MAP_OPTIONS
+            if (DebugMenuLoad()) {
+                DebugMenuAddVarBool8("MenuMap", "Show all Hidden Packages", (int8_t*)&Debug_ShowAllHiddenPackages, nullptr);
+                DebugMenuAddVarBool8("MenuMap", "Show all Rampages", (int8_t*)&Debug_ShowAllRampages, nullptr);
+                DebugMenuAddVarBool8("MenuMap", "Show all Unique Stunts", (int8_t*)&Debug_ShowAllUniqueStunts, nullptr);
+            }
 
-        plugin::Events::initRwEvent += [] {
+            enum {
+                REGISTER_STUNT_JUMP = 4600,
+                SET_STUNT_JUMP_COMPLETED,
+            };
+            ScmExtender::AddOneCommand(REGISTER_STUNT_JUMP, [](int32_t* params) -> int8_t {
+                ScmExtender::CollectParams(4);
+
+                tScriptParam* p = (tScriptParam*)params;
+                Collectable col;
+                col.index = p[0].iParam;
+                col.pos = *(CVector*)&p[1].fParam;
+                col.removed = false;
+                aUniqueStunts.push_back(col);
+
+                return 0;
+            });
+
+            ScmExtender::AddOneCommand(SET_STUNT_JUMP_COMPLETED, [](int32_t* params) -> int8_t {
+                ScmExtender::CollectParams(1);
+
+                tScriptParam* p = (tScriptParam*)params;
+
+                auto it = std::find_if(aUniqueStunts.begin(), aUniqueStunts.end(),
+                    [&](const Collectable& c) {
+                    return c.index == p[0].iParam;
+                });
+
+                if (it != aUniqueStunts.end())
+                    it->removed = true;
+
+                return 0;
+            });
+#endif
+        };
+
+        plugin::Events::initGameEvent += [] {
             const HMODULE h = ModuleList().GetByPrefix(L"skyui");
             if (h) {
                 MenuNew->settings.skyUI = true;
             }
+            
+#ifdef GTA3
+            RadarTraceArray = plugin::patch::Get<tRadarTrace*>(0x4A55CA + 2);
+            RadarSpritesArray = plugin::patch::Get<CSprite2d**>(0x4A6004 + 3);
+            RadarTraceArraySize = *(uint8_t*)0x4A47FC;
+
+#ifdef WITH_VCS_MAP_OPTIONS
+                int32_t slot = CTxdStore::FindTxdSlot("hud");
+                CTxdStore::SetCurrentTxd(slot);
+                RadarPackageSprite.m_pTexture = RwTextureRead("radar_package", nullptr);
+                RadarRampageSprite.m_pTexture = RwTextureRead("radar_rampage", nullptr);
+                RadarStuntJumpSprite.m_pTexture = RwTextureRead("radar_stuntjump", nullptr);
+
+                CTxdStore::PopCurrentTxd();     
+
+                aPackages = {};
+                aRampages = {};
+                aUniqueStunts = {};
+#endif
+#endif
+
+                spriteLoader.LoadSpriteFromFolder("models\\map.png");
+
+                if (spriteLoader.GetTex("map"))
+                    MenuNew->dontStreamRadarTiles = true;
+        };
+
+        plugin::Events::shutdownRwEvent += []() {
+            spriteLoader.Clear();
         };
 
         plugin::Events::drawBlipsEvent += [] {
