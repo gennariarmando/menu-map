@@ -349,9 +349,14 @@ public:
 #ifdef WITH_VCS_MAP_OPTIONS
                 int32_t slot = CTxdStore::FindTxdSlot("hud");
                 CTxdStore::SetCurrentTxd(slot);
-                RadarPackageSprite.m_pTexture = RwTextureRead("radar_package", nullptr);
-                RadarRampageSprite.m_pTexture = RwTextureRead("radar_rampage", nullptr);
-                RadarStuntJumpSprite.m_pTexture = RwTextureRead("radar_stuntjump", nullptr);
+                if (!RadarPackageSprite.m_pTexture)
+                    RadarPackageSprite.m_pTexture = RwTextureRead("radar_package", nullptr);
+
+                if (!RadarRampageSprite.m_pTexture)
+                    RadarRampageSprite.m_pTexture = RwTextureRead("radar_rampage", nullptr);
+
+                if (!RadarStuntJumpSprite.m_pTexture)
+                    RadarStuntJumpSprite.m_pTexture = RwTextureRead("radar_stuntjump", nullptr);
 
                 CTxdStore::PopCurrentTxd();     
 
@@ -361,7 +366,8 @@ public:
 #endif
 #endif
 
-                spriteLoader.LoadSpriteFromFolder("models\\map.png");
+                if (!spriteLoader.GetTex("map"))
+                    spriteLoader.LoadSpriteFromFolder("models\\map.png");
 
                 if (spriteLoader.GetTex("map"))
                     MenuNew->dontStreamRadarTiles = true;

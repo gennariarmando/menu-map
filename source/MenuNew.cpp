@@ -199,15 +199,24 @@ void CMenuNew::DrawMap() {
     CRadar::InitFrontEndMap();
     CRadar::DrawBlips();
 #endif
-    RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, reinterpret_cast<void*>(FALSE));
+
+    DefinedState();
+
+    RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, reinterpret_cast<void*>(TRUE));
     RwRenderStateSet(rwRENDERSTATESRCBLEND, reinterpret_cast<void*>(rwBLENDSRCALPHA));
     RwRenderStateSet(rwRENDERSTATEDESTBLEND, reinterpret_cast<void*>(rwBLENDINVSRCALPHA));
     RwRenderStateSet(rwRENDERSTATEFOGENABLE, reinterpret_cast<void*>(FALSE));
     RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, reinterpret_cast<void*>(FALSE));
     RwRenderStateSet(rwRENDERSTATEZTESTENABLE, reinterpret_cast<void*>(FALSE));
+    RwRenderStateSet(rwRENDERSTATETEXTUREPERSPECTIVE, reinterpret_cast<void*>(FALSE));
+    RwRenderStateSet(rwRENDERSTATETEXTUREADDRESS, reinterpret_cast<void*>(rwTEXTUREADDRESSCLAMP));
+    RwRenderStateSet(rwRENDERSTATETEXTUREFILTER, reinterpret_cast<void*>(rwFILTERMIPLINEAR));
+    RwRenderStateSet(rwRENDERSTATETEXTURERASTER, nullptr);
 
-    CSprite2d::DrawRect(CRect(-5.0f + GetMenuOffsetX(), -5.0f, SCREEN_WIDTH + 5.0f + GetMenuOffsetX(), SCREEN_HEIGHT + 5.0f), CRGBA(0, 0, 0, GetAlpha()));
-    CSprite2d::DrawRect(CRect(-5.0f + GetMenuOffsetX(), -5.0f, SCREEN_WIDTH + 5.0f + GetMenuOffsetX(), SCREEN_HEIGHT + 5.0f), CRGBA(settings.backgroundColor.r, settings.backgroundColor.g, settings.backgroundColor.b, GetAlpha(settings.backgroundColor.a)));
+    CSprite2d::DrawRect(CRect(-5.0f + GetMenuOffsetX(), -5.0f, SCREEN_WIDTH + 5.0f + GetMenuOffsetX(), SCREEN_HEIGHT + 5.0f), CRGBA(0, 0, 0, 0));
+   
+    if (settings.backgroundColor.a > 0)
+        CSprite2d::DrawRect(CRect(-5.0f + GetMenuOffsetX(), -5.0f, SCREEN_WIDTH + 5.0f + GetMenuOffsetX(), SCREEN_HEIGHT + 5.0f), CRGBA(settings.backgroundColor.r, settings.backgroundColor.g, settings.backgroundColor.b, GetAlpha(settings.backgroundColor.a)));
 
     CRGBA col = { settings.radarMapColor.r, settings.radarMapColor.g, settings.radarMapColor.b,
 #ifdef GTASA
@@ -254,29 +263,130 @@ void CMenuNew::DrawMap() {
     dark.top -= mapHalfSize;
     dark.right -= mapHalfSize;
 
-    CRGBA darkCol = settings.backgroundColor;
-    darkCol.a = GetAlpha(200);
+    CRGBA darkCol = CRGBA(0, 0, 0, GetAlpha(200));
+
+    const float mapWholeSize = GetMenuMapWholeSize();
+    const CRect mapBounds(
+        m_vMapBase.x + GetMenuOffsetX() - mapHalfSize,
+        m_vMapBase.y - mapHalfSize,
+        m_vMapBase.x + GetMenuOffsetX() - mapHalfSize + mapWholeSize,
+        m_vMapBase.y - mapHalfSize + mapWholeSize
+    );
+
+    auto DrawDarkRectMasked = [&](const CRect& r) {
+        CRect clipped(
+            std::max(r.left, mapBounds.left),
+            std::max(r.top, mapBounds.top),
+            std::min(r.right, mapBounds.right),
+            std::min(r.bottom, mapBounds.bottom)
+        );
+
+        if (clipped.right <= clipped.left || clipped.bottom <= clipped.top)
+            return;
+
+        RwRenderStateSet(rwRENDERSTATETEXTUREFILTER, reinterpret_cast<void*>(rwFILTERMIPLINEAR));
+        RwRenderStateSet(rwRENDERSTATESRCBLEND, reinterpret_cast<void*>(rwBLENDSRCALPHA));
+        RwRenderStateSet(rwRENDERSTATEDESTBLEND, reinterpret_cast<void*>(rwBLENDINVSRCALPHA));
+        RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, reinterpret_cast<void*>(TRUE));
+        RwRenderStateSet(rwRENDERSTATETEXTUREPERSPECTIVE, reinterpret_cast<void*>(FALSE));
+        RwRenderStateSet(rwRENDERSTATETEXTUREADDRESS, reinterpret_cast<void*>(rwTEXTUREADDRESSCLAMP));
+
+        for (int y = 0; y < RADAR_NUM_TILES; y++) {
+            for (int x = 0; x < RADAR_NUM_TILES; x++) {
+                CRect tileRect(
+                    mapBounds.left + (x * mapZoom),
+                    mapBounds.top + (y * mapZoom),
+                    mapBounds.left + ((x + 1) * mapZoom),
+                    mapBounds.top + ((y + 1) * mapZoom)
+                );
+
+                CRect tileClipped(
+                    std::max(clipped.left, tileRect.left),
+                    std::max(clipped.top, tileRect.top),
+                    std::min(clipped.right, tileRect.right),
+                    std::min(clipped.bottom, tileRect.bottom)
+                );
+
+                if (tileClipped.right <= tileClipped.left || tileClipped.bottom <= tileClipped.top)
+                    continue;
+
+                RwTexture* texture = NULL;
+                float u1 = 0.0f;
+                float v1 = 0.0f;
+                float u2 = 1.0f;
+                float v2 = 1.0f;
+
+                if (dontStreamRadarTiles) {
+                    texture = spriteLoader.GetTex("map");
+
+                    float baseU1 = (float)(x) / (float)RADAR_NUM_TILES;
+                    float baseV1 = (float)(y) / (float)RADAR_NUM_TILES;
+                    float baseU2 = (float)(x + 1) / (float)RADAR_NUM_TILES;
+                    float baseV2 = (float)(y + 1) / (float)RADAR_NUM_TILES;
+
+                    float tileU1 = (tileClipped.left - tileRect.left) / mapZoom;
+                    float tileV1 = (tileClipped.top - tileRect.top) / mapZoom;
+                    float tileU2 = (tileClipped.right - tileRect.left) / mapZoom;
+                    float tileV2 = (tileClipped.bottom - tileRect.top) / mapZoom;
+
+                    u1 = baseU1 + (baseU2 - baseU1) * tileU1;
+                    v1 = baseV1 + (baseV2 - baseV1) * tileV1;
+                    u2 = baseU1 + (baseU2 - baseU1) * tileU2;
+                    v2 = baseV1 + (baseV2 - baseV1) * tileV2;
+                }
+                else {
+                    int index = std::clamp((int32_t)(x + RADAR_NUM_TILES * y), 0, (int32_t)(RADAR_NUM_TILES * RADAR_NUM_TILES) - 1);
+#ifdef GTASA
+                    int r = gRadarTextures[index];
+#else
+                    int r = gRadarTxdIds[index];
+#endif
+                    RwTexDictionary* txd = CTxdStore::ms_pTxdPool->GetAt(r)->m_pRwDictionary;
+
+                    if (txd)
+                        texture = GetFirstTexture(txd);
+
+                    float tileU1 = (tileClipped.left - tileRect.left) / mapZoom;
+                    float tileV1 = (tileClipped.top - tileRect.top) / mapZoom;
+                    float tileU2 = (tileClipped.right - tileRect.left) / mapZoom;
+                    float tileV2 = (tileClipped.bottom - tileRect.top) / mapZoom;
+
+                    u1 = tileU1;
+                    v1 = tileV1;
+                    u2 = tileU2;
+                    v2 = tileV2;
+                }
+
+                if (!texture)
+                    continue;
+
+                RwRenderStateSet(rwRENDERSTATETEXTURERASTER, RwTextureGetRaster(texture));
+                CSprite2d::SetVertices(tileClipped, darkCol, darkCol, darkCol, darkCol, u1, v1, u2, v1, u1, v2, u2, v2);
+                RwIm2DRenderPrimitive(rwPRIMTYPETRIFAN, CSprite2d::maVertices, 4);
+            }
+        }
+    };
 
     // Right
-    //CSprite2d::DrawRect(CRect(dark.right + (mapZoom * 4.4f), dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 8.0f), dark.bottom + mapHalfSize), darkCol);
+    //DrawDarkRectMasked(CRect(dark.right + (mapZoom * 4.4f), dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 8.0f), dark.bottom + mapHalfSize));
 
     // Center
     if (!CStats::IndustrialPassed) {
-        CSprite2d::DrawRect(CRect(dark.right + (mapZoom * 2.3f), dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 4.4f), dark.bottom + mapHalfSize), darkCol);
+        DrawDarkRectMasked(CRect(dark.right + (mapZoom * 2.3f), dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 4.4f), dark.bottom + mapHalfSize));
     }
     
     // Left
     if (!CStats::CommercialPassed) {
-        CSprite2d::DrawRect(CRect(dark.left, dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 2.3f), dark.bottom + mapHalfSize), darkCol);
-        CSprite2d::DrawRect(CRect(dark.left, dark.top, dark.right + (mapZoom * 8.0f), dark.top + (mapZoom * 3.4f)), darkCol);
+        DrawDarkRectMasked(CRect(dark.left, dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 2.3f), dark.bottom + mapHalfSize));
+        DrawDarkRectMasked(CRect(dark.left, dark.top, dark.right + (mapZoom * 8.0f), dark.top + (mapZoom * 3.4f)));
     
         if (CStats::IndustrialPassed) {
-            CSprite2d::DrawRect(CRect(
-                dark.right + (mapZoom * 2.3f), dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 2.6f), dark.bottom - (mapZoom * 1.1f)), darkCol);
+            DrawDarkRectMasked(CRect(
+                dark.right + (mapZoom * 2.3f), dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 2.6f), dark.bottom - (mapZoom * 1.1f)));
     
     
-            CSprite2d::DrawRect(CRect(
-                dark.right + (mapZoom * 2.6f), dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 2.7f), dark.bottom - (mapZoom * 1.3f)), darkCol);
+            DrawDarkRectMasked(CRect(
+                dark.right + (mapZoom * 2.6f), dark.top + (mapZoom * 3.4f), dark.right + (mapZoom * 2.7f), dark.bottom - (mapZoom * 1.3f)));
         }
     }
 
@@ -608,25 +718,10 @@ void CMenuNew::DrawBlips() {
 #ifdef GTA3
     // Force drawing of some blips, III only.
     if (settings.forceBlipsOnMap) {
-        struct fb {
-            float x;
-            float y;
-            unsigned short sprite;
-            unsigned char island;
-        };
-        std::vector<fb> pos = {
-            { 1071.2f, -400.0f, RADAR_SPRITE_WEAPON, 0 }, // ammu1
-            { 345.5f, -713.5f, RADAR_SPRITE_WEAPON, 1 }, // ammu2
-            { -1200.8f, -24.5f, RADAR_SPRITE_WEAPON, 2 }, // ammu3
-            { 925.0f, -359.5f, RADAR_SPRITE_SPRAY, 0 }, // spray1
-            { 379.0f, -493.7f, RADAR_SPRITE_SPRAY, 1  }, // spray2
-            { -1142.0f, 34.7f, RADAR_SPRITE_SPRAY, 2 }, // spray3
-            { 1282.1f, -104.8f, RADAR_SPRITE_BOMB, 0 }, // bomb1
-            { 380.0f, -576.6f, RADAR_SPRITE_BOMB, 1 }, // bomb2
-            { -1082.5f, 55.2f, RADAR_SPRITE_BOMB, 2 }, // bomb3
-        };
+        for (auto& it : settings.forcedBlips) {
+            if (it.sprite < 0)
+                continue;
 
-        for (auto& it : pos) {
 #if defined(GTA3) && defined(LCSFICATION)
             if ((it.island == 1 && !CStats::IndustrialPassed) || (it.island == 2 && !CStats::CommercialPassed))
                 continue;

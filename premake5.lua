@@ -36,6 +36,7 @@ project "menu-map"
 			"$(PLUGIN_SDK_DIR)/plugin_III/",
 			"$(PLUGIN_SDK_DIR)/plugin_III/game_III/",
 			"$(PLUGIN_SDK_DIR)/plugin_III/game_III/rw",
+			"$(PLUGIN_SDK_DIR)/plugin_III/game_III/enums",
 		}
 		targetname "MenuMapIII"
 		debugdir "$(GTA_III_DIR)"
@@ -49,6 +50,7 @@ project "menu-map"
 			"$(PLUGIN_SDK_DIR)/plugin_vc/",
 			"$(PLUGIN_SDK_DIR)/plugin_vc/game_vc/",
 			"$(PLUGIN_SDK_DIR)/plugin_vc/game_vc/rw",
+			"$(PLUGIN_SDK_DIR)/plugin_vc/game_vc/enums",
 			"$(RWD3D9_DIR)/source"
 		}
 		targetname "MenuMapVC"
@@ -62,6 +64,7 @@ project "menu-map"
 			"$(PLUGIN_SDK_DIR)/plugin_sa/",
 			"$(PLUGIN_SDK_DIR)/plugin_sa/game_sa/",
 			"$(PLUGIN_SDK_DIR)/plugin_sa/game_sa/rw",
+			"$(PLUGIN_SDK_DIR)/plugin_sa/game_sa/enums",
 		}
 		targetname "MenuMapSA"
 		debugdir "$(GTA_SA_DIR)"
