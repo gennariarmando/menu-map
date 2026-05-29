@@ -13,6 +13,7 @@
 #include "CTheZones.h"
 #include "CFont.h"
 #include "CText.h"
+#include <string>
 
 #ifdef LCSFICATION
 #include "CStats.h"
@@ -53,6 +54,22 @@ D3DVIEWPORT8 newViewport = {};
 #endif
 
 plugin::SpriteLoader spriteLoader = {};
+
+template <typename T>
+static const T* EnsureDoubleNullTerminated(const T* str) {
+#ifndef GTASA
+    if (!str)
+        return str;
+
+    static thread_local std::basic_string<T> safe;
+    safe = str;
+    safe.push_back(static_cast<T>(0));
+    safe.push_back(static_cast<T>(0));
+    return safe.c_str();
+#else
+    return str;
+#endif
+}
 
 #ifdef WITH_VCS_MAP_OPTIONS
 std::vector<MenuMapOptions> aMenuMapItems = {
@@ -531,10 +548,10 @@ void CMenuNew::DrawZone() {
                 y = ScaleY(DEFAULT_SCREEN_HEIGHT - 44.0f);
                 str = UpperCase(str);
             }
-            CFont::PrintString(x, y, str);
+            CFont::PrintString(x, y, EnsureDoubleNullTerminated(str));
         }
         else
-            CFont::PrintString(ScaleX(16.0f), SCREEN_HEIGHT - ScaleY(34.0f), str);
+            CFont::PrintString(ScaleX(16.0f), SCREEN_HEIGHT - ScaleY(34.0f), EnsureDoubleNullTerminated(str));
 #elif GTAVC
         CFont::SetDropColor(CRGBA(0, 0, 0, 255));
         CFont::SetDropShadowPosition(2);
@@ -542,11 +559,11 @@ void CMenuNew::DrawZone() {
         CFont::SetScale(ScaleX(0.64f), ScaleY(1.28f));
         if (settings.skyUI) {
             CFont::SetRightJustifyOff();
-            CFont::PrintString(ScaleXKeepCentered(78.0f) + GetMenuOffsetX(), ScaleY(DEFAULT_SCREEN_HEIGHT - 138.0f), str);
+            CFont::PrintString(ScaleXKeepCentered(78.0f) + GetMenuOffsetX(), ScaleY(DEFAULT_SCREEN_HEIGHT - 138.0f), EnsureDoubleNullTerminated(str));
         }
         else {
             CFont::SetRightJustifyOn();
-            CFont::PrintString(SCREEN_WIDTH - ScaleX(72.0f), SCREEN_HEIGHT - ScaleY(102.0f), str);
+            CFont::PrintString(SCREEN_WIDTH - ScaleX(72.0f), SCREEN_HEIGHT - ScaleY(102.0f), EnsureDoubleNullTerminated(str));
         }
 #endif
     }
@@ -556,6 +573,37 @@ void CMenuNew::DrawZone() {
 
 void CMenuNew::DrawBlips() {
     int traceSize = 32;
+
+#if defined(GTA3) || defined(GTAVC)
+    std::vector<CVector2D> forcedBlipMapPositions;
+    if (settings.forceBlipsOnMap) {
+        forcedBlipMapPositions.reserve(settings.forcedBlips.size());
+        for (auto& it : settings.forcedBlips) {
+            if (it.sprite < 0)
+                continue;
+
+#if defined(GTA3) && defined(LCSFICATION)
+            if ((it.island == 1 && !CStats::IndustrialPassed) || (it.island == 2 && !CStats::CommercialPassed))
+                continue;
+#endif
+
+            forcedBlipMapPositions.push_back(WorldToMap({ it.x, it.y, 0.0f }));
+        }
+    }
+
+    const float forcedBlipMergeDistance = std::max(ScaleX(RADAR_BLIPS_SCALE * 0.75f), ScaleY(RADAR_BLIPS_SCALE * 0.75f));
+    const float forcedBlipMergeDistanceSquared = forcedBlipMergeDistance * forcedBlipMergeDistance;
+    auto IsNearForcedBlip = [&](const CVector2D& p) {
+        for (auto& forcedPos : forcedBlipMapPositions) {
+            float dx = p.x - forcedPos.x;
+            float dy = p.y - forcedPos.y;
+            if ((dx * dx + dy * dy) <= forcedBlipMergeDistanceSquared)
+                return true;
+        }
+
+        return false;
+    };
+#endif
    
     if (this->GetLcsfication())
         traceSize = RadarTraceArraySize;
@@ -590,6 +638,11 @@ void CMenuNew::DrawBlips() {
         case BLIP_COORD:
         case BLIP_CONTACTPOINT:
             if (!CTheScripts::IsPlayerOnAMission() || trace.m_nBlipType == BLIP_COORD) {
+#if defined(GTA3) || defined(GTAVC)
+                if (IsNearForcedBlip(pos))
+                    break;
+#endif
+
                 if (id != RADAR_SPRITE_NONE) {
                     CSprite2d* sprite =
 #ifdef GTASA
@@ -668,6 +721,11 @@ void CMenuNew::DrawBlips() {
 
             if (e) {
                 pos = WorldToMap(e->GetPosition());
+
+#if defined(GTA3) || defined(GTAVC)
+                if (IsNearForcedBlip(pos))
+                    break;
+#endif
 
                 if (id != RADAR_SPRITE_NONE) {
                     CSprite2d* sprite =
@@ -1307,6 +1365,9 @@ void CMenuNew::DrawLegend() {
 #endif
 
 #ifdef GTAVC
+    const float shift = 182.0f;
+    float x = SCREEN_WIDTH / 2;
+    float y = ScaleY(128.0f);
     for (int i = 0; i < CRadar::MapLegendCounter; i += 2) {
         x = SCREEN_WIDTH / 2;
         x -= ScaleX(shift);
@@ -1418,7 +1479,7 @@ void CMenuNew::DrawLegendEntry(float x, float y, short id, CRGBA* col) {
 
     x = blipX + ScaleX(LEGEND_BLIP_SCALE_X * 0.8f);
     y = blipY - ScaleY(LEGEND_BLIP_SCALE_Y * 0.5f);
-    if (settings.readStringsFromThisFile) {
+    if (settings.readStringsFromThisFile && id >= 0 && id < (int32_t)settings.gxt.size()) {
         DrawTextForLegendBox(x, y, settings.gxt.at(id).c_str(), c);  
     }
     else {

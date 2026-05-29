@@ -1,5 +1,6 @@
 #pragma once
-#include <array>
+#include <string>
+#include <vector>
 
 struct ForcedBlip {
     float x;
@@ -25,8 +26,8 @@ public:
     bool skyUI;
     bool enableLegendBox;
     bool readStringsFromThisFile;
-    std::array<std::string, 128> gxt;
-    std::array<ForcedBlip, 256> forcedBlips;
+    std::vector<std::string> gxt;
+    std::vector<ForcedBlip> forcedBlips;
 
 public:
     void Read();

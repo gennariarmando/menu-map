@@ -84,19 +84,18 @@ bool TryParseForcedBlip(const std::string& value, ForcedBlip& out) {
     return true;
 }
 
-void ReadForcedBlipsFromSection(const char* filePath, std::array<ForcedBlip, 256>& forcedBlips) {
-    for (auto& it : forcedBlips)
-        it = ForcedBlip();
+void ReadForcedBlipsFromSection(const char* filePath, std::vector<ForcedBlip>& forcedBlips) {
+    forcedBlips.clear();
+    forcedBlips.reserve(64);
 
     std::ifstream file(filePath);
     if (!file.is_open())
         return;
 
     bool insideBlipsSection = false;
-    size_t idx = 0;
     std::string line;
 
-    while (std::getline(file, line) && idx < forcedBlips.size()) {
+    while (std::getline(file, line)) {
         std::string s = Trim(line);
 
         if (s.empty())
@@ -119,7 +118,7 @@ void ReadForcedBlipsFromSection(const char* filePath, std::array<ForcedBlip, 256
 
         ForcedBlip parsed;
         if (TryParseForcedBlip(s, parsed))
-            forcedBlips[idx++] = parsed;
+            forcedBlips.push_back(parsed);
     }
 }
 
@@ -140,6 +139,8 @@ void Settings::Read() {
     skyUI = config["SkyUI"].asBool(false);
     enableLegendBox = config["EnableLegendBox"].asBool(false);
     readStringsFromThisFile = config["ReadStringsFromThisFile"].asBool(true);
+
+    gxt.assign(128, "");
 
     int i = 0;
     for (auto& it : gxt) {
