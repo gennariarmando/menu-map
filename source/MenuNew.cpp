@@ -9,6 +9,7 @@
 #ifndef GTASA
 #include "cDMAudio.h"
 #include "d3d8.h"
+#include "CRGBA.h"
 #endif
 #include "CTheZones.h"
 #include "CFont.h"
@@ -27,13 +28,6 @@ CRGBA MapLegendBlipColor[MAX_LEGEND_ENTRIES] = {};
 #include "SkyUIAPI.h"
 
 std::unique_ptr<CMenuNew> MenuNew;
-#ifdef GTASA
-CSprite2d** RadarSpritesArray = &CRadar::RadarBlipSprites;
-#else
-CSprite2d** RadarSpritesArray = pRadarSprites;
-#endif
-tRadarTrace* RadarTraceArray = CRadar::ms_RadarTrace;
-uint8_t RadarTraceArraySize = 32;
 
 #ifdef WITH_VCS_MAP_OPTIONS
 CSprite2d RadarPackageSprite = {};
@@ -114,10 +108,54 @@ CMenuNew::~CMenuNew() {
     menuManager = nullptr;
 }
 
-void CMenuNew::SetViewport() {
-    auto dev = (IDirect3DDevice8*)GetD3DDevice();
+CSprite2d** CMenuNew::GetRadarSprites()
+{
+#ifdef GTA3
+    return injector::ReadMemory<CSprite2d**>(0x4A6007, true);
+#elif GTAVC
+    return injector::ReadMemory<CSprite2d**>(0x4C2E0D, true);
+#elif GTASA
+    return injector::ReadMemory<CSprite2d**>(0x5860F3, true);
+#endif
+}
 
+tRadarTrace* CMenuNew::GetRadarTrace()
+{
+#ifdef GTA3
+    return injector::ReadMemory<tRadarTrace*>(0x596332);
+#elif GTAVC
+    return injector::ReadMemory<tRadarTrace*>(0x6203F8);
+#elif GTASA
+    return injector::ReadMemory<tRadarTrace*>(0x5838B2);
+#endif
+}
+
+int32_t CMenuNew::GetRadarTraceSize()
+{
+#ifdef GTA3
+    return injector::ReadMemory<int8_t>(0x4A3F2E + 2, true);
+#elif GTAVC
+    return injector::ReadMemory<int8_t>(0x4C62AA + 2, true);
+#elif GTASA
+    return injector::ReadMemory<int32_t>(0x5839CA + 2, true);
+#endif
+}
+
+int32_t CMenuNew::GetTxdOffset()
+{
+#ifdef GTA3
+    return injector::ReadMemory<int32_t>(0x401121 + 2);
+#elif GTAVC
+    return injector::ReadMemory<int32_t>(0x401571 + 2);
+#elif GTASA
+    return injector::ReadMemory<int32_t>(0x4088FB + 2);
+#endif
+}
+
+void CMenuNew::SetViewport() {
+    
 #ifndef GTASA
+    auto dev = (IDirect3DDevice8*)GetD3DDevice();
     if (settings.skyUI) {
         dev->GetViewport(&previousViewport);
 
@@ -151,9 +189,9 @@ void CMenuNew::SetViewport() {
 }
 
 void CMenuNew::RestoreViewport() {
-    auto dev = (IDirect3DDevice8*)GetD3DDevice();
 
 #ifndef GTASA 
+    auto dev = (IDirect3DDevice8*)GetD3DDevice();
     if (settings.skyUI)
         dev->SetViewport(&previousViewport);
 #endif
@@ -606,14 +644,10 @@ void CMenuNew::DrawBlips() {
 #endif
    
     if (this->GetLcsfication())
-        traceSize = RadarTraceArraySize;
+        traceSize = GetRadarTraceSize();
 
-#ifdef GTA3
     for (int i = 0; i < traceSize; i++) {
-#else
-    for (int i = 0; i < 75; i++) {
-#endif
-        tRadarTrace& trace = RadarTraceArray[i];
+        tRadarTrace& trace = GetRadarTrace()[i];
 
         if (!trace.m_bInUse)
             continue;
@@ -644,12 +678,8 @@ void CMenuNew::DrawBlips() {
 #endif
 
                 if (id != RADAR_SPRITE_NONE) {
-                    CSprite2d* sprite =
-#ifdef GTASA
-                        & CRadar::RadarBlipSprites[id];
-#else
-                        RadarSpritesArray[id];
-#endif
+                    CSprite2d* sprite = GetRadarSprites()[id];
+
                     DrawSpriteWithRotation(sprite, pos.x + GetMenuOffsetX(), pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), 0.0f, CRGBA(255, 255, 255,
 #ifdef GTASA
                         255
@@ -703,7 +733,7 @@ void CMenuNew::DrawBlips() {
                     CPed* p = static_cast<CPed*>(e);
                     if (p &&
 #ifdef GTASA
-                        p->m_nPedFlags.bInVehicle
+                        p->bInVehicle
 #else
                         p->m_bInVehicle
 #endif
@@ -728,12 +758,8 @@ void CMenuNew::DrawBlips() {
 #endif
 
                 if (id != RADAR_SPRITE_NONE) {
-                    CSprite2d* sprite =
-#ifdef GTASA
-                        & CRadar::RadarBlipSprites[id];
-#else
-                        RadarSpritesArray[id];
-#endif
+                    CSprite2d* sprite = GetRadarSprites()[id];
+
                     DrawSpriteWithRotation(sprite, pos.x + GetMenuOffsetX(), pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), 0.0f, CRGBA(255, 255, 255,
 #ifdef GTASA
                         255
@@ -786,7 +812,7 @@ void CMenuNew::DrawBlips() {
 #endif
 
             CVector2D pos = WorldToMap({ it.x, it.y, 0.0f });
-            DrawSpriteWithRotation(RadarSpritesArray[it.sprite], pos.x + GetMenuOffsetX(), pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), 0.0f, CRGBA(255, 255, 255,
+            DrawSpriteWithRotation(GetRadarSprites()[it.sprite], pos.x + GetMenuOffsetX(), pos.y, ScaleX(RADAR_BLIPS_SCALE), ScaleY(RADAR_BLIPS_SCALE), 0.0f, CRGBA(255, 255, 255,
 #ifdef GTASA
                 255
 #else
@@ -820,12 +846,7 @@ void CMenuNew::DrawBlips() {
             0
 #endif
         );
-        CSprite2d* sprite =
-#ifdef GTASA
-            & CRadar::RadarBlipSprites[RADAR_SPRITE_CENTRE];
-#else 
-            RadarSpritesArray[RADAR_SPRITE_CENTRE];
-#endif
+        CSprite2d* sprite = GetRadarSprites()[RADAR_SPRITE_CENTRE];
 
         if (sprite && flashItem(1000, 200))
             DrawSpriteWithRotation(sprite, pos.x + GetMenuOffsetX(), pos.y, ScaleX(RADAR_BLIPS_SCALE - 1.0f), ScaleY(RADAR_BLIPS_SCALE - 1.0f), angle, CRGBA(255, 255, 255,
@@ -884,19 +905,9 @@ void CMenuNew::StreamRadarSections() {
     for (int i = 0; i < RADAR_NUM_TILES; ++i) {
         for (int j = 0; j < RADAR_NUM_TILES; ++j) {
             int index = i + RADAR_NUM_TILES * j;
-#ifdef GTASA
-            int r = gRadarTextures[index];
-#else
             int r = gRadarTxdIds[index];
-#endif
-#ifdef GTA3
-            CStreaming::RequestModel(r + 5500, KEEP_IN_MEMORY | GAME_REQUIRED);
-#elif GTAVC
-            CStreaming::RequestModel(r + 6500, KEEP_IN_MEMORY | GAME_REQUIRED);
-#elif GTASA
-            CStreaming::RequestModel(r + 20000, KEEP_IN_MEMORY | GAME_REQUIRED);
+            CStreaming::RequestModel(r + GetTxdOffset(), KEEP_IN_MEMORY | GAME_REQUIRED);
             //CStreaming::LoadRequestedModels();
-#endif    
         };
     }
 
@@ -1214,11 +1225,7 @@ void CMenuNew::DrawRadarSectionMap(int x, int y, CRect const& rect, CRGBA const&
     }
     else {
         RwTexture* texture = NULL;
-#ifdef GTASA
-        int r = gRadarTextures[index];
-#else
         int r = gRadarTxdIds[index];
-#endif
         RwTexDictionary* txd = CTxdStore::ms_pTxdPool->GetAt(r)->m_pRwDictionary;
 
         if (txd)
@@ -1469,7 +1476,7 @@ void CMenuNew::DrawLegendEntry(float x, float y, short id, CRGBA* col) {
         }
     }
     else {
-        DrawSpriteWithRotation(RadarSpritesArray[id], blipX, blipY, ScaleX(LEGEND_BLIP_SCALE_X), ScaleY(LEGEND_BLIP_SCALE_Y), 0.0f, CRGBA(255, 255, 255, GetAlpha(255)));
+        DrawSpriteWithRotation(GetRadarSprites()[id], blipX, blipY, ScaleX(LEGEND_BLIP_SCALE_X), ScaleY(LEGEND_BLIP_SCALE_Y), 0.0f, CRGBA(255, 255, 255, GetAlpha(255)));
     }
 
     if (id < 0)

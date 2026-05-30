@@ -103,6 +103,11 @@ public:
     CMenuNew();
     ~CMenuNew();
 
+    CSprite2d** GetRadarSprites();
+    tRadarTrace* GetRadarTrace();
+	int32_t GetRadarTraceSize();
+	int32_t GetTxdOffset();
+
     void SetViewport();
     void RestoreViewport();
 
@@ -146,10 +151,6 @@ public:
 };
 
 extern std::unique_ptr<CMenuNew> MenuNew;
-extern CSprite2d** RadarSpritesArray;
-extern tRadarTrace* RadarTraceArray;
-extern uint8_t RadarTraceArraySize;
-
 extern plugin::SpriteLoader spriteLoader;
 
 #ifdef WITH_VCS_MAP_OPTIONS

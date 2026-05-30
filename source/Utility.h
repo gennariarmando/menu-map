@@ -3,6 +3,7 @@
 #include "extensions/Screen.h"
 #include "CSprite2d.h"
 #include "CText.h"
+#include "CDraw.h"
 
 #define DEFAULT_SCREEN_WIDTH 640.0f
 #define DEFAULT_SCREEN_HEIGHT 480.0f
