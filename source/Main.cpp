@@ -340,11 +340,6 @@ public:
             if (h) {
                 MenuNew->settings.skyUI = true;
             }
-            
-#ifdef GTA3
-            RadarTraceArray = plugin::patch::Get<tRadarTrace*>(0x4A55CA + 2);
-            RadarSpritesArray = plugin::patch::Get<CSprite2d**>(0x4A6004 + 3);
-            RadarTraceArraySize = *(uint8_t*)0x4A47FC;
 
 #ifdef WITH_VCS_MAP_OPTIONS
                 int32_t slot = CTxdStore::FindTxdSlot("hud");
@@ -363,7 +358,6 @@ public:
                 aPackages = {};
                 aRampages = {};
                 aUniqueStunts = {};
-#endif
 #endif
 
                 if (!spriteLoader.GetTex("map"))
