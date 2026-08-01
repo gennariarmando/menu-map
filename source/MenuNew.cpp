@@ -29,6 +29,20 @@ CRGBA MapLegendBlipColor[MAX_LEGEND_ENTRIES] = {};
 
 std::unique_ptr<CMenuNew> MenuNew;
 
+#ifdef GTA3
+// Optional inter-plugin API. Consumers resolve this at runtime, so menu-map
+// remains completely independent and older consumers continue to work.
+extern "C" __declspec(dllexport) bool __cdecl MenuMapIII_GetWaypoint(float* x, float* y, float* z) {
+    if (!MenuNew || !MenuNew->targetBlipIndex || !x || !y || !z)
+        return false;
+
+    *x = MenuNew->targetBlipWorldPos.x;
+    *y = MenuNew->targetBlipWorldPos.y;
+    *z = MenuNew->targetBlipWorldPos.z;
+    return true;
+}
+#endif
+
 #ifdef WITH_VCS_MAP_OPTIONS
 CSprite2d RadarPackageSprite = {};
 CSprite2d RadarRampageSprite = {};
